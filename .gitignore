@@ -1,0 +1,38 @@
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller / Build artifacts
+build/
+dist/
+*.spec
+
+# SQLite database files (contains local streaming stats/history)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Editor / IDE configs
+.vscode/
+.idea/
+
+# Agent/Gemini files (conversations, agents configurations, plans)
+.gemini/
+.agents/
+.system_generated/
+task.md
+implementation_plan.md
+walkthrough.md
+zip_source.py

@@ -1,0 +1,149 @@
+{
+  "Settings": {
+    "last_id": "",
+    "blacklist": [],
+    "read_comment": true,
+    "read_join": false,
+    "read_gift": true,
+    "read_like": false,
+    "read_share": true,
+    "read_vip": true,
+    "read_emoji": true,
+    "symbol_level": 1,
+    "msg_comment": "{user} พิมพ์ว่า {comment}",
+    "msg_join": "{user} เข้ามารับชมไลฟ์",
+    "msg_gift": "{user} ส่ง {gift} จำนวน {count} ชิ้น",
+    "msg_like": "{user} ส่งไลก์",
+    "msg_share": "{user} แชร์ไลฟ์ของคุณ",
+    "msg_vip": "{user} สมัครสมาชิกช่อง",
+    "filter_badwords": true,
+    "filter_spam": true,
+    "viewer_frequency_limit": 1.5
+  },
+  "TTS": {
+    "mode": "nvda",
+    "voice_index": 0,
+    "speed": 0,
+    "volume": 1.0,
+    "edge_voice": "th-TH-PremwadeeNeural",
+    "edge_speed": "+0%",
+    "funny_style": "normal"
+  },
+  "SFX": {
+    "master_volume": 1.0,
+    "sfx_join": "welcome.wav",
+    "sfx_gift": "gift.wav",
+    "sfx_comment": "comment.wav",
+    "sfx_like": "like.wav",
+    "sfx_share": "share.wav",
+    "sfx_update": "update.wav"
+  },
+  "Points": {
+    "points_per_join": 5,
+    "points_per_comment": 1,
+    "points_per_like": 2,
+    "points_per_share": 10,
+    "points_per_gift_diamond": 50
+  },
+  "Accessibility": {
+    "advanced_blind_mode": false,
+    "high_contrast": false,
+    "large_font": false,
+    "font_size": 12,
+    "speak_navigation": false
+  },
+  "Radio": {
+    "enabled": false,
+    "stations": [
+      {
+        "name": "วิทยุไทยลูกทุ่ง",
+        "url": "http://radio11.plathong.net:8896/;stream.mp3"
+      },
+      {
+        "name": "วิทยุเพลงป็อป",
+        "url": "https://coolism-web3rd.cdn.byteark.com/stream/1/"
+      },
+      {
+        "name": "วิทยุสากลฮิต",
+        "url": "https://fabulous.thailandstreaming.net/fabulous.mp3"
+      }
+    ],
+    "current_station_idx": 0
+  },
+  "AI": {
+    "api_key": "",
+    "model_name": "gemini-1.5-flash",
+    "streamer_assistant_enabled": true,
+    "viewer_assistant_enabled": true,
+    "announce_stats_enabled": true
+  },
+  "Mixer": {
+    "active_profile": "normal",
+    "profiles": {
+      "normal": {
+        "music": 0.3,
+        "comment": 1.0,
+        "gift": 1.0,
+        "sfx": 0.8,
+        "tts": 1.0,
+        "ai": 0.9
+      },
+      "game": {
+        "music": 0.1,
+        "comment": 0.8,
+        "gift": 1.0,
+        "sfx": 0.5,
+        "tts": 1.0,
+        "ai": 0.7
+      },
+      "singing": {
+        "music": 0.8,
+        "comment": 0.3,
+        "gift": 1.0,
+        "sfx": 0.9,
+        "tts": 0.5,
+        "ai": 0.3
+      },
+      "special": {
+        "music": 0.5,
+        "comment": 1.0,
+        "gift": 1.0,
+        "sfx": 1.0,
+        "tts": 1.0,
+        "ai": 1.0
+      }
+    }
+  },
+  "Soundboard": {
+    "sounds": {
+      "laugh": "laugh.wav",
+      "rimshot": "rimshot.wav",
+      "drumroll": "drumroll.wav",
+      "applause": "applause.wav",
+      "cheer": "cheer.wav",
+      "wow": "wow.wav",
+      "shock": "shock.wav",
+      "cat": "cat.wav",
+      "dog": "dog.wav",
+      "rooster": "rooster.wav",
+      "duck": "duck.wav",
+      "gameshow": "gameshow.wav",
+      "win": "win.wav",
+      "lose": "lose.wav",
+      "explosion": "explosion.wav",
+      "slide": "slide.wav",
+      "baby_laugh": "baby_laugh.wav",
+      "cheer2": "cheer2.wav"
+    }
+  },
+  "AutoAnnouncements": {
+    "enabled": true,
+    "interval_sec": 180,
+    "messages": [
+      "ยินดีต้อนรับสมาชิกใหม่ครับ",
+      "เข้ามาแล้วอย่าลืมกดไลก์นะครับ",
+      "วันนี้เจ้าของไลฟ์อารมณ์ดีเป็นพิเศษ",
+      "ใครกดแชร์ขอให้โชคดีทั้งวัน"
+    ]
+  }
+}
