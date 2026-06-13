@@ -34,6 +34,10 @@ class MainWindow(wx.Frame):
         self.db = DatabaseHelper()
         self.reader = ReaderHelper(self.audio.add_to_queue)
         
+        # 2.5 เริ่มโมดูลตรวจสอบสิทธิ์การใช้งาน
+        from core.licensing import LicenseManager
+        self.lic_manager = LicenseManager(config_path)
+        
         # 3. เตรียมคอมโพเนนต์อินเทอร์เฟซผู้ใช้
         self.panel = wx.Panel(self)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
@@ -102,6 +106,7 @@ class MainWindow(wx.Frame):
 
         # 7. เมนูช่วยเหลือ (Help)
         menu_help = wx.Menu()
+        item_register = menu_help.Append(wx.ID_ANY, "ลงทะเบียนเปิดใช้งานเวอร์ชันเต็ม")
         item_doc_th = menu_help.Append(wx.ID_ANY, "คู่มือการใช้งานทั่วไป")
         item_doc_blind = menu_help.Append(wx.ID_ANY, "คู่มือการเข้าถึงสำหรับผู้พิการทางสายตา")
         item_check_update = menu_help.Append(wx.ID_ANY, "ตรวจสอบเวอร์ชันและการอัปเดต")
@@ -146,6 +151,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, lambda e: self._on_show_manual("blind"), item_doc_blind)
         self.Bind(wx.EVT_MENU, lambda e: self._on_check_update_action(), item_check_update)
         self.Bind(wx.EVT_MENU, lambda e: self._on_show_about(), item_about)
+        self.Bind(wx.EVT_MENU, lambda e: self._on_register_app(), item_register)
 
     def _init_gui_layout(self):
         """ออกแบบเลย์เอาต์ช่องข้อความและปุ่มหลัก"""
@@ -481,6 +487,8 @@ class MainWindow(wx.Frame):
         Ctrl+Shift+A: เรียกปัญญาประดิษฐ์ตอบคำถามเสียงเกี่ยวกับไลฟ์
         ใช้การพิมพ์/พูดจำลอง (ในกรณีผู้ใช้ตาบอด จะมี Popup เด้งขึ้นมาเพื่อถามเสียงหรือพิมพ์ถามด่วน)
         """
+        if not self._check_license_and_prompt("ผู้ช่วย AI"):
+            return
         # เพื่อความรวดเร็วและใช้แป้นพิมพ์เป็นหลัก
         # เราเปิด Dialog ถามคำถามเสียงสตรีมเมอร์
         dlg = wx.TextEntryDialog(self, "ถามผู้ช่วย AI เกี่ยวกับสถิติไลฟ์ของคุณ:", "ผู้ช่วยสตรีมเมอร์ตาบอด AI")
@@ -513,6 +521,8 @@ class MainWindow(wx.Frame):
 
     def _on_open_radio_window(self):
         """เปิดหน้าต่างควบคุมเครื่องเล่นวิทยุออนไลน์"""
+        if not self._check_license_and_prompt("เครื่องเล่นวิทยุออนไลน์"):
+            return
         if hasattr(self, "radio_win") and self.radio_win:
             try:
                 self.radio_win.Raise()
@@ -609,15 +619,23 @@ class MainWindow(wx.Frame):
             pass
 
     def _on_music_play_pause(self):
+        if not self._check_license_silent("ควบคุมเครื่องเล่นเพลง"):
+            return
         self.manager.music.pause_or_resume()
 
     def _on_music_next(self):
+        if not self._check_license_silent("ควบคุมเครื่องเล่นเพลง"):
+            return
         self.manager.music.next_track()
 
     def _on_music_prev(self):
+        if not self._check_license_silent("ควบคุมเครื่องเล่นเพลง"):
+            return
         self.manager.music.prev_track()
 
     def _on_toggle_music_mute(self):
+        if not self._check_license_silent("ควบคุมเครื่องเล่นเพลง"):
+            return
         music = self.manager.music
         if music.music_volume > 0.0:
             self._prev_music_volume = music.music_volume
@@ -631,6 +649,8 @@ class MainWindow(wx.Frame):
             self.audio.add_to_queue(f"เปิดเสียงเพลง ความดัง {int(vol * 100)} เปอร์เซ็นต์ค่ะ", 5)
 
     def _on_open_music_window(self):
+        if not self._check_license_and_prompt("เครื่องเล่นเพลงคำขอ"):
+            return
         # ป้องกันการเปิดหลายหน้าต่าง
         if hasattr(self, "music_win") and self.music_win:
             try:
@@ -642,12 +662,18 @@ class MainWindow(wx.Frame):
         self.music_win.Show()
 
     def _on_play_sfx(self, key: str):
+        if not self._check_license_silent("ซาวด์บอร์ดเอฟเฟกต์"):
+            return
         self.manager.soundboard.play_sound(key)
 
     def _on_play_random_sfx(self):
+        if not self._check_license_silent("ซาวด์บอร์ดเอฟเฟกต์"):
+            return
         self.manager.soundboard.play_random_effect()
 
     def _on_open_soundboard_window(self):
+        if not self._check_license_and_prompt("แผงซาวด์บอร์ดเอฟเฟกต์"):
+            return
         # ป้องกันการเปิดหลายหน้าต่าง
         if hasattr(self, "soundboard_win") and self.soundboard_win:
             try:
@@ -723,3 +749,27 @@ class MainWindow(wx.Frame):
                     )
                     self.audio.add_to_queue("การลงทะเบียนเสียงล้มเหลว หรือไม่ได้รับสิทธิ์ค่ะ", 8)
             dlg.Destroy()
+
+    def _check_license_and_prompt(self, feature_name: str) -> bool:
+        """ตรวจสอบสิทธิ์และแสดงหน้าจอเปิดใช้งานกรณีไม่ได้ลงทะเบียน (สำหรับเมนู/หน้าต่างเปิดหลัก)"""
+        if self.lic_manager.is_activated():
+            return True
+        self.audio.add_to_queue(f"ฟีเจอร์ {feature_name} สำหรับผู้ใช้งานเวอร์ชันเต็มเท่านั้น กรุณาลงทะเบียนเพื่อเปิดใช้งานค่ะ", 8)
+        if self.lic_manager.check_activation_flow():
+            return True
+        return False
+
+    def _check_license_silent(self, feature_name: str) -> bool:
+        """ตรวจสอบสิทธิ์แบบไม่มีหน้าจอป๊อปอัปอัตโนมัติ (สำหรับคีย์ลัดด่วน)"""
+        if self.lic_manager.is_activated():
+            return True
+        self.audio.add_to_queue(f"ฟีเจอร์ {feature_name} จำกัดเฉพาะผู้ใช้งานเวอร์ชันเต็มเท่านั้นค่ะ", 8)
+        return False
+
+    def _on_register_app(self):
+        """คลิกเมนูลงทะเบียน"""
+        if self.lic_manager.is_activated():
+            self.audio.add_to_queue("โปรแกรมนี้เปิดใช้งานเวอร์ชันเต็มเรียบร้อยแล้วค่ะ ขอบคุณมากค่ะ", 8)
+            wx.MessageBox("โปรแกรมนี้เปิดใช้งานเวอร์ชันเต็มเรียบร้อยแล้ว ขอบคุณที่สนับสนุนครับ!", "ลงทะเบียนสำเร็จแล้ว", wx.OK | wx.ICON_INFORMATION)
+            return
+        self.lic_manager.check_activation_flow()

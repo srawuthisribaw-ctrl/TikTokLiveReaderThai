@@ -39,6 +39,7 @@ def build_executable():
         "--hidden-import=services.soundboard_service",
         "--hidden-import=services.ai_service",
         "--hidden-import=core.command_handler",
+        "--hidden-import=core.licensing",
         "main.py"
     ]
     
@@ -58,7 +59,7 @@ def build_executable():
         dist_dir = "dist"
     
     resources = [
-        ("config.json", True),
+        ("config.dat", True),
         ("symbols-en.dic", True),
         ("nvdaControllerClient_x64.dll", True),
         ("คู่มือภาษาไทย.txt", True),

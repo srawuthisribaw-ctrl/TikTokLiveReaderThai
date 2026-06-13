@@ -7,7 +7,7 @@ if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
+CONFIG_FILE = os.path.join(BASE_DIR, "config.dat")
 
 def ensure_folders_exist():
     """สร้างโฟลเดอร์ที่จำเป็นทั้งหมดหากยังไม่มี"""

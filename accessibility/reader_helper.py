@@ -16,13 +16,13 @@ class ReaderHelper:
         self.speak_navigation = False
         self.tts_mode = "nvda"
         
-        # โหลดการตั้งค่าจากไฟล์ config.json โดยตรง
+        # โหลดการตั้งค่าจากไฟล์ config.dat โดยตรง
         if getattr(sys, 'frozen', False):
             base_dir = os.path.dirname(sys.executable)
         else:
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             
-        config_path = os.path.join(base_dir, "config.json")
+        config_path = os.path.join(base_dir, "config.dat")
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r", encoding="utf-8") as f:

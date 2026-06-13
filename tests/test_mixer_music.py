@@ -10,8 +10,8 @@ class TestMixerMusic(unittest.TestCase):
     ชุดยูนิตเทสต์สำหรับการตรวจสอบการทำงานของ Mixer และคิวเพลง/เครื่องเล่นเพลง
     """
     def setUp(self):
-        # สร้าง config.json จำลองสำหรับการเทสต์
-        self.config_fd, self.config_path = tempfile.mkstemp(suffix=".json")
+        # สร้าง config.dat จำลองสำหรับการเทสต์
+        self.config_fd, self.config_path = tempfile.mkstemp(suffix=".dat")
         os.close(self.config_fd)
         
         self.mock_config = {

@@ -59,7 +59,11 @@ class HotkeyManager:
         for hotkey_id, (modifiers, vk_code, desc) in self.HOTKEYS.items():
             success = self.frame.RegisterHotKey(hotkey_id, modifiers, vk_code)
             if not success:
-                print(f"Failed to register global hotkey: {desc}")
+                try:
+                    # ป้องกันการชนกันของรหัสอักษร (Encoding Error) ในหน้าจอดำของ Windows
+                    print(f"Failed to register global hotkey ID {hotkey_id}")
+                except Exception:
+                    pass
 
     def unregister_all_hotkeys(self):
         """ยกเลิกการลงทะเบียนปุ่มลัดเมื่อปิดโปรแกรม"""

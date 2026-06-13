@@ -183,7 +183,7 @@ class MusicService:
         return self.play_song()
 
     def set_volume(self, volume: float):
-        """ปรับความดังเพลงโดยตรง และบันทึกค่าลง config.json เพื่อให้คงอยู่ถาวร"""
+        """ปรับความดังเพลงโดยตรง และบันทึกค่าลง config.dat เพื่อให้คงอยู่ถาวร"""
         self.channel_volume = max(0.0, min(1.0, volume))
         
         # โหลดระดับเสียงหลักล่าสุดเพื่อคูณเป็นระดับเสียงจริงที่จะตั้งให้ Pygame
