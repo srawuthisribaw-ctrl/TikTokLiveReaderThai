@@ -41,29 +41,79 @@ def generate_key(machine_id: str) -> str:
     return base64.b64encode(signature).decode('utf-8')
 
 def copy_to_clipboard(text: str) -> bool:
-    # วิธีที่ 1: ใช้ win32clipboard (เสถียรที่สุดบน Windows)
+    # วิธีที่ 1: ใช้ ctypes เรียก Windows API โดยตรง (ปลอดภัยบน 64-bit และไม่ต้องลงไลบรารีเพิ่ม)
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        user32.OpenClipboard.argtypes = [wintypes.HWND]
+        user32.OpenClipboard.restype = wintypes.BOOL
+
+        user32.EmptyClipboard.argtypes = []
+        user32.EmptyClipboard.restype = wintypes.BOOL
+
+        user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+        user32.SetClipboardData.restype = wintypes.HANDLE
+
+        user32.CloseClipboard.argtypes = []
+        user32.CloseClipboard.restype = wintypes.BOOL
+
+        kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+        kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
+
+        kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+        kernel32.GlobalLock.restype = wintypes.LPVOID
+
+        kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+        kernel32.GlobalUnlock.restype = wintypes.BOOL
+
+        GMEM_MOVEABLE = 0x0002
+        CF_UNICODETEXT = 13
+
+        if user32.OpenClipboard(None):
+            try:
+                user32.EmptyClipboard()
+                encoded = (text + '\0').encode('utf-16le')
+                h_mem = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(encoded))
+                if h_mem:
+                    ptr = kernel32.GlobalLock(h_mem)
+                    if ptr:
+                        try:
+                            ctypes.memmove(ptr, encoded, len(encoded))
+                        finally:
+                            kernel32.GlobalUnlock(h_mem)
+                        if user32.SetClipboardData(CF_UNICODETEXT, h_mem):
+                            user32.CloseClipboard()
+                            return True
+            finally:
+                user32.CloseClipboard()
+    except Exception:
+        pass
+
+    # วิธีที่ 2: ใช้ win32clipboard (หากมี pywin32 ในเครื่อง)
     try:
         import win32clipboard
         import win32con
         win32clipboard.OpenClipboard()
         win32clipboard.EmptyClipboard()
-        # CF_UNICODETEXT หรือ CF_TEXT
         win32clipboard.SetClipboardText(text, win32con.CF_UNICODETEXT)
         win32clipboard.CloseClipboard()
         return True
     except Exception:
         pass
 
-    # วิธีที่ 2: เรียกใช้ clip.exe ของระบบปฏิบัติการ Windows ตรงๆ
+    # วิธีที่ 3: เรียกใช้ clip.exe ของ Windows (ไม่ต้องใช้ shell=True เพื่อความปลอดภัยและเสถียรภาพ)
     try:
         import subprocess
-        p = subprocess.Popen(['clip'], stdin=subprocess.PIPE, shell=True)
-        p.communicate(input=text.encode('ascii', errors='ignore'))
+        subprocess.run(['clip'], input=text.encode('utf-8'), check=True, creationflags=0x08000000) # CREATE_NO_WINDOW
         return True
     except Exception:
         pass
 
-    # วิธีที่ 3: ใช้ tkinter เผื่อกรณีอื่นๆ
+    # วิธีที่ 4: ใช้ tkinter เผื่อกรณีอื่นๆ (แต่ต้องระวังปัญหากล่องข้อความหายเมื่อปิดหน้าต่าง)
     try:
         import tkinter as tk
         r = tk.Tk()
@@ -71,7 +121,8 @@ def copy_to_clipboard(text: str) -> bool:
         r.clipboard_clear()
         r.clipboard_append(text)
         r.update()
-        r.destroy()
+        # ไม่ทำ r.destroy() ทันทีเพื่อให้ระบบปฏิบัติการดึงข้อมูลจากคลิปบอร์ดได้ทัน
+        # แต่เพื่อความปลอดภัยเราจะปล่อยไว้สักครู่แล้วค่อยปิด หรือไม่ทำลายจนกว่าจะจบโปรแกรม
         return True
     except Exception:
         pass
