@@ -9,7 +9,9 @@ from typing import Dict, Any, List, Optional
 import sys
 
 if getattr(sys, 'frozen', False):
-    SOUNDS_DIR = os.path.join(os.path.dirname(sys.executable), "sounds")
+    SOUNDS_DIR = os.path.join(os.path.dirname(sys.executable), "_internal", "sounds")
+    if not os.path.exists(SOUNDS_DIR):
+        SOUNDS_DIR = os.path.join(os.path.dirname(sys.executable), "sounds")
 else:
     SOUNDS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sounds")
 
@@ -145,23 +147,37 @@ class SoundboardService:
         self.play_sound(chosen)
 
     # --- ระบบเสียงตอบกลับอัตโนมัติตามกิจกรรม ---
-    def trigger_event_effect(self, event_type: str, nickname: str = "ผู้ชม"):
+    def trigger_event_effect(self, event_type: str, nickname: str = None):
         """
         เล่นเสียงประกอบและประกาศคำพูดตลกอัตโนมัติเมื่อผู้ชมทำกิจกรรมสำเร็จ
         event_type: 'new_follower', 'gift', 'large_gift', 'level_up', 'win_game'
         """
+        from core.i18n import get_language
+        lang = get_language()
+        if nickname is None:
+            nickname = "Viewer" if lang == "en" else "ผู้ชม"
+
         if event_type == "new_follower":
             # เล่นเอฟเฟกต์เชียร์
             self.play_sound("cheer")
-            self.speak_fn(f"เย้ มีผู้ติดตามใหม่! ขอบคุณคุณ {nickname} ที่กดติดตามช่องนะคะ", 8)
+            if lang == "en":
+                self.speak_fn(f"Yay! New follower! Thank you {nickname} for following the channel.", 8)
+            else:
+                self.speak_fn(f"เย้ มีผู้ติดตามใหม่! ขอบคุณคุณ {nickname} ที่กดติดตามช่องนะคะ", 8)
             
         elif event_type == "gift":
             self.play_sound("wow")
-            self.speak_fn(f"ขอบคุณสำหรับของขวัญนะคะคุณ {nickname} ขอให้เฮงเฮงรวยรวยค่ะ", 10)
+            if lang == "en":
+                self.speak_fn(f"Thank you for the gift {nickname}! Wishing you lots of wealth and happiness.", 10)
+            else:
+                self.speak_fn(f"ขอบคุณสำหรับของขวัญนะคะคุณ {nickname} ขอให้เฮงเฮงรวยรวยค่ะ", 10)
             
         elif event_type == "large_gift":
             self.play_sound("cheer2")
-            self.speak_fn(f"ว้าว! คุณได้รับของขวัญมูลค่าสูงจากคุณ {nickname}! ปรบมือฉลองเจ้าสัวใหญ่สตรีมเรากันหน่อยค่ะ", 10)
+            if lang == "en":
+                self.speak_fn(f"Wow! Received a high value gift from {nickname}! Let's round of applause for our big sponsor!", 10)
+            else:
+                self.speak_fn(f"ว้าว! คุณได้รับของขวัญมูลค่าสูงจากคุณ {nickname}! ปรบมือฉลองเจ้าสัวใหญ่สตรีมเรากันหน่อยค่ะ", 10)
             self.play_sound("applause")
             
         elif event_type == "level_up":
@@ -173,15 +189,26 @@ class SoundboardService:
     # --- ฟังก์ชันรายงานเสียงตลกอัตโนมัติ (Auto announcements) ---
     def get_random_funny_announcement(self) -> str:
         """ดึงข้อความตลกอัตโนมัติแบบสุ่มจากคอนฟิก"""
+        from core.i18n import get_language
+        lang = get_language()
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
-            messages = config.get("AutoAnnouncements", {}).get("messages", [
+            default_msgs_th = [
                 "ยินดีต้อนรับสมาชิกใหม่ครับ",
                 "เข้ามาแล้วอย่าลืมกดไลก์นะครับ",
                 "วันนี้เจ้าของไลฟ์อารมณ์ดีเป็นพิเศษ",
                 "ใครกดแชร์ขอให้โชคดีทั้งวัน"
-            ])
+            ]
+            default_msgs_en = [
+                "Welcome new members!",
+                "Don't forget to like the live stream!",
+                "The streamer is in a great mood today!",
+                "Good luck to everyone who shares this live stream!"
+            ]
+            messages = config.get("AutoAnnouncements", {}).get("messages", default_msgs_th)
+            if lang == "en" and messages == default_msgs_th:
+                messages = default_msgs_en
             return random.choice(messages)
         except Exception:
-            return "ยินดีต้อนรับทุกท่านเข้ารับชมไลฟ์สดค่ะ"
+            return "Welcome everyone to the live stream!" if lang == "en" else "ยินดีต้อนรับทุกท่านเข้ารับชมไลฟ์สดค่ะ"

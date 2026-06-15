@@ -1,7 +1,10 @@
 import wx
+import json
 from typing import Any
 from services.soundboard_service import SoundboardService
 from accessibility.reader_helper import ReaderHelper
+
+from core.i18n import tr, get_language
 
 class SoundboardWindow(wx.Frame):
     """
@@ -9,17 +12,24 @@ class SoundboardWindow(wx.Frame):
     รองรับการควบคุมผ่านปุ่มคีย์บอร์ด F1 - F10 และนำทาง 100%
     """
     def __init__(self, parent: wx.Window, soundboard_service: SoundboardService, speak_fn: Any, config_path: str):
-        super().__init__(parent, title="ซาวด์บอร์ดเอฟเฟกต์เสียงประกอบสตรีม", size=(500, 550))
+        super().__init__(parent, title=tr("TITLE_SOUNDBOARD", "ซาวด์บอร์ดเอฟเฟกต์เสียงประกอบสตรีม"), size=(500, 550))
         self.sfx = soundboard_service
         self.speak_fn = speak_fn
         self.config_path = config_path
         self.reader = ReaderHelper(speak_fn)
         
+        lang = get_language()
+        
         self.panel = wx.Panel(self)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         
         # 1. หัวข้อปุ่มลัดและคำแนะนำคีย์บอร์ด
-        self.lbl_info = wx.StaticText(self.panel, label="คีย์ลัดเล่นด่วน (ขณะหน้าต่างนี้เปิดโฟกัสอยู่):\nF1=หัวเราะ, F2=ปรบมือ, F3=เชียร์, F4=ว้าว, F5=ตึ่งโป๊ะ, F6=กลองม้วน, F7=ชนะ, F8=แพ้, F9=สุ่มเสียง", style=wx.ALIGN_CENTER)
+        if lang == "en":
+            info_text = "Quick shortcuts (when this window is focused):\nF1=Laugh, F2=Applause, F3=Cheer, F4=Wow, F5=Rimshot, F6=Drumroll, F7=Win, F8=Lose, F9=Random SFX"
+        else:
+            info_text = "คีย์ลัดเล่นด่วน (ขณะหน้าต่างนี้เปิดโฟกัสอยู่):\nF1=หัวเราะ, F2=ปรบมือ, F3=เชียร์, F4=ว้าว, F5=ตึ่งโป๊ะ, F6=กลองม้วน, F7=ชนะ, F8=แพ้, F9=สุ่มเสียง"
+            
+        self.lbl_info = wx.StaticText(self.panel, label=info_text, style=wx.ALIGN_CENTER)
         self.lbl_info.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
         self.vbox.Add(self.lbl_info, 0, wx.ALL | wx.EXPAND, 10)
         
@@ -27,40 +37,69 @@ class SoundboardWindow(wx.Frame):
         grid = wx.GridSizer(cols=3, hgap=5, vgap=5)
         
         # รายการเสียงปุ่มในแผง
-        self.buttons_list = [
-            ("laugh", "ฮาฮาฮา (F1)"),
-            ("applause", "ปรบมือ (F2)"),
-            ("cheer", "เชียร์ (F3)"),
-            ("wow", "ว้าว (F4)"),
-            ("rimshot", "ตึ่งโป๊ะ (F5)"),
-            ("drumroll", "กลองม้วน (F6)"),
-            ("win", "เสียงชนะ (F7)"),
-            ("lose", "เสียงแพ้ (F8)"),
-            ("shock", "ตกใจ"),
-            ("cat", "เสียงแมว"),
-            ("dog", "เสียงหมา"),
-            ("rooster", "เสียงไก่"),
-            ("duck", "เสียงเป็ด"),
-            ("gameshow", "เกมโชว์"),
-            ("explosion", "ระเบิด"),
-            ("slide", "เสียงสไลด์"),
-            ("baby_laugh", "หัวเราะเด็ก"),
-            ("cheer2", "โห่ร้อง")
-        ]
+        if lang == "en":
+            self.buttons_list = [
+                ("laugh", "Laugh (F1)"),
+                ("applause", "Applause (F2)"),
+                ("cheer", "Cheer (F3)"),
+                ("wow", "Wow (F4)"),
+                ("rimshot", "Rimshot (F5)"),
+                ("drumroll", "Drumroll (F6)"),
+                ("win", "Win SFX (F7)"),
+                ("lose", "Lose SFX (F8)"),
+                ("shock", "Shock"),
+                ("cat", "Cat Sound"),
+                ("dog", "Dog Sound"),
+                ("rooster", "Rooster Sound"),
+                ("duck", "Duck Sound"),
+                ("gameshow", "Game Show"),
+                ("explosion", "Explosion"),
+                ("slide", "Slide Sound"),
+                ("baby_laugh", "Baby Laugh"),
+                ("cheer2", "Cheering")
+            ]
+        else:
+            self.buttons_list = [
+                ("laugh", "ฮาฮาฮา (F1)"),
+                ("applause", "ปรบมือ (F2)"),
+                ("cheer", "เชียร์ (F3)"),
+                ("wow", "ว้าว (F4)"),
+                ("rimshot", "ตึ่งโป๊ะ (F5)"),
+                ("drumroll", "กลองม้วน (F6)"),
+                ("win", "เสียงชนะ (F7)"),
+                ("lose", "เสียงแพ้ (F8)"),
+                ("shock", "ตกใจ"),
+                ("cat", "เสียงแมว"),
+                ("dog", "เสียงหมา"),
+                ("rooster", "เสียงไก่"),
+                ("duck", "เสียงเป็ด"),
+                ("gameshow", "เกมโชว์"),
+                ("explosion", "ระเบิด"),
+                ("slide", "เสียงสไลด์"),
+                ("baby_laugh", "หัวเราะเด็ก"),
+                ("cheer2", "โห่ร้อง")
+            ]
         
         # สร้างปุ่มสำหรับแต่ละเสียง
         for key, label in self.buttons_list:
             btn = wx.Button(self.panel, label=label)
             btn.Bind(wx.EVT_BUTTON, lambda event, k=key: self._on_play_sfx_click(k))
-            self.reader.bind_focus_announcement(btn, f"ปุ่มเล่นเสียงเอฟเฟกต์ {label.replace('(F', 'เอฟเฟกต์เอฟ')}")
+            if lang == "en":
+                self.reader.bind_focus_announcement(btn, f"Play sound effect button, {label.replace('(F', 'effect F')}")
+            else:
+                self.reader.bind_focus_announcement(btn, f"ปุ่มเล่นเสียงเอฟเฟกต์ {label.replace('(F', 'เอฟเฟกต์เอฟ')}")
             grid.Add(btn, 1, wx.EXPAND)
             
         self.vbox.Add(grid, 1, wx.EXPAND | wx.ALL, 10)
         
         # ปุ่มปิด
-        self.btn_close = wx.Button(self.panel, label="ปิดหน้าต่างซาวด์บอร์ด (F10)")
+        close_label = "Close Soundboard (F10)" if lang == "en" else "ปิดหน้าต่างซาวด์บอร์ด (F10)"
+        self.btn_close = wx.Button(self.panel, label=close_label)
         self.btn_close.Bind(wx.EVT_BUTTON, lambda e: self.Close())
-        self.reader.bind_focus_announcement(self.btn_close, "ปุ่มปิดหน้าต่างซาวด์บอร์ด")
+        if lang == "en":
+            self.reader.bind_focus_announcement(self.btn_close, "Close soundboard window button")
+        else:
+            self.reader.bind_focus_announcement(self.btn_close, "ปุ่มปิดหน้าต่างซาวด์บอร์ด")
         self.vbox.Add(self.btn_close, 0, wx.ALIGN_RIGHT | wx.ALL, 10)
         
         self.panel.SetSizer(self.vbox)
@@ -68,7 +107,10 @@ class SoundboardWindow(wx.Frame):
         # ผูกปุ่มลัดคีย์บอร์ดที่รันเฉพาะในหน้าต่างนี้ (Local Key Events)
         self.panel.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
         
-        self.reader.announce_navigation("เปิดหน้าต่างซาวด์บอร์ดเสียงตลกแล้วค่ะ", 8)
+        if lang == "en":
+            self.reader.announce_navigation("Funny sound effects soundboard window opened.", 8)
+        else:
+            self.reader.announce_navigation("เปิดหน้าต่างซาวด์บอร์ดเสียงตลกแล้วค่ะ", 8)
         self.apply_theme()
 
     def _on_play_sfx_click(self, key: str):

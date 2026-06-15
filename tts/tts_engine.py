@@ -14,7 +14,9 @@ from typing import List, Dict, Any, Tuple, Optional
 
 # ค้นหาพาธของไฟล์ DLL สำหรับ NVDA
 if getattr(sys, 'frozen', False):
-    DLL_X64 = os.path.join(os.path.dirname(sys.executable), "nvdaControllerClient_x64.dll")
+    DLL_X64 = os.path.join(os.path.dirname(sys.executable), "_internal", "nvdaControllerClient_x64.dll")
+    if not os.path.exists(DLL_X64):
+        DLL_X64 = os.path.join(os.path.dirname(sys.executable), "nvdaControllerClient_x64.dll")
 else:
     DLL_X64 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "nvdaControllerClient_x64.dll")
 

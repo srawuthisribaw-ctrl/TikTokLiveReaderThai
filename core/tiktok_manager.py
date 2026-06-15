@@ -25,6 +25,7 @@ from services.soundboard_service import SoundboardService
 from services.ai_service import AIService
 from core.command_handler import CommandHandler
 from plugins.base_plugin import BasePlugin
+from core.i18n import get_language, tr
 
 GIFT_TRANSLATIONS = {
     'Rose': 'ดอกกุหลาบ',
@@ -185,7 +186,7 @@ class TikTokManager:
             except Exception as e:
                 print(f"Error stopping client: {e}")
         self.is_connected = False
-        self.audio.add_to_queue("ตัดการเชื่อมต่อไลฟ์สดแล้วค่ะ", 8, channel="tts")
+        self.audio.add_to_queue(tr("MSG_DISCONNECTING"), 8, channel="tts")
 
     def _run_async_client(self):
         self.loop = asyncio.new_event_loop()
@@ -236,7 +237,7 @@ class TikTokManager:
                     if attempt == max_retries or self.stop_bg_tasks:
                         self.is_connected = False
                         self.ui_callback("connection_failed", str(e))
-                        self.audio.add_to_queue("ไม่พบห้องไลฟ์สด หรือเชื่อมต่อไม่ได้ กรุณาตรวจสอบไอดีค่ะ", 8, channel="tts")
+                        self.audio.add_to_queue(tr("MSG_CONN_FAILED"), 8, channel="tts")
                     else:
                         time.sleep(retry_delay)
         finally:
@@ -261,7 +262,7 @@ class TikTokManager:
         async def on_connect(event: ConnectEvent):
             self.is_connected = True
             self.connect_time = time.time()
-            self.audio.add_to_queue("เชื่อมต่อไลฟ์สำเร็จแล้ว", 10, "sfx_join", channel="tts")
+            self.audio.add_to_queue(tr("STATUS_CONNECTED_ROOM").format(room=self.room_id), 10, "sfx_join", channel="tts")
             self.ui_callback("connected", self.room_id)
             self.db.save_live_metric("live_start", time.strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -325,14 +326,23 @@ class TikTokManager:
             if cmd_res:
                 ans_text, sfx_k, prio = cmd_res
                 # บันทึกเป็นช่อง AI หรือคอมเมนต์ตามเนื้อความ
-                self.audio.add_to_queue(ans_text, prio, sfx_k, channel="ai" if "AI ตอบ" in ans_text else "comment")
-                self.ui_callback("history", f"[บอท]: {ans_text}")
+                self.audio.add_to_queue(ans_text, prio, sfx_k, channel="ai" if ("AI ตอบ" in ans_text or "AI answered" in ans_text) else "comment")
+                bot_prefix = "[Bot]" if get_language() == "en" else "[บอท]"
+                self.ui_callback("history", f"{bot_prefix}: {ans_text}")
                 return
 
             # 5. อ่านออกเสียงคอมเมนต์ปกติ
             if read_comment:
                 processed_comment = comment
                 fmt = config.get("Settings", {}).get("msg_comment", "{user} พิมพ์ว่า {comment}")
+                
+                # Dynamic override if default th template is found in en mode
+                lang = get_language()
+                if lang == "en" and fmt == "{user} พิมพ์ว่า {comment}":
+                    fmt = "{user} says {comment}"
+                elif lang == "th" and fmt == "{user} says {comment}":
+                    fmt = "{user} พิมพ์ว่า {comment}"
+                    
                 speak_text = fmt.replace("{user}", nickname).replace("{comment}", processed_comment)
                 
                 self.audio.add_to_queue(speak_text, 5, "sfx_comment", channel="comment")
@@ -373,9 +383,18 @@ class TikTokManager:
 
             if read_join:
                 fmt = config.get("Settings", {}).get("msg_join", "{user} เข้ามารับชมไลฟ์")
+                
+                lang = get_language()
+                if lang == "en" and fmt == "{user} เข้ามารับชมไลฟ์":
+                    fmt = "{user} joined the live"
+                elif lang == "th" and fmt == "{user} joined the live":
+                    fmt = "{user} เข้ามารับชมไลฟ์"
+                    
                 speak_text = fmt.replace("{user}", nickname)
                 self.audio.add_to_queue(speak_text, 2, "sfx_join", channel="comment")
-                self.ui_callback("history", f"--- {nickname} เข้าร่วมไลฟ์ ---")
+                
+                history_msg = f"--- {nickname} joined ---" if lang == "en" else f"--- {nickname} เข้าร่วมไลฟ์ ---"
+                self.ui_callback("history", history_msg)
 
         @self.client.on(GiftEvent)
         async def on_gift(event: GiftEvent):
@@ -415,10 +434,19 @@ class TikTokManager:
                 read_gift = True
 
             if read_gift:
-                gname_lower = gift_name.lower().strip()
-                final_gname = GIFT_TRANSLATIONS_LOWER.get(gname_lower, gift_name)
+                lang = get_language()
+                if lang == "en":
+                    final_gname = gift_name
+                else:
+                    gname_lower = gift_name.lower().strip()
+                    final_gname = GIFT_TRANSLATIONS_LOWER.get(gname_lower, gift_name)
                 
                 fmt = config.get("Settings", {}).get("msg_gift", "{user} ส่ง {gift} จำนวน {count} ชิ้น")
+                if lang == "en" and fmt == "{user} ส่ง {gift} จำนวน {count} ชิ้น":
+                    fmt = "{user} sent {gift} x{count}"
+                elif lang == "th" and fmt == "{user} sent {gift} x{count}":
+                    fmt = "{user} ส่ง {gift} จำนวน {count} ชิ้น"
+                    
                 speak_text = fmt.replace("{user}", nickname).replace("{gift}", final_gname).replace("{count}", str(count))
                 
                 # หากได้รับของขวัญมูลค่าสูง
@@ -428,7 +456,10 @@ class TikTokManager:
                     self.soundboard.trigger_event_effect("gift", nickname)
                     
                 self.audio.add_to_queue(speak_text, 10, None, channel="gift")
-                self.ui_callback("history", f"[ของขวัญ] {nickname}: ส่ง {final_gname} x{count}")
+                
+                gift_prefix = "[Gift]" if lang == "en" else "[ของขวัญ]"
+                gift_action = "sent" if lang == "en" else "ส่ง"
+                self.ui_callback("history", f"{gift_prefix} {nickname}: {gift_action} {final_gname} x{count}")
 
         @self.client.on(LikeEvent)
         async def on_like(event: LikeEvent):
@@ -458,13 +489,27 @@ class TikTokManager:
 
             if read_like:
                 fmt = config.get("Settings", {}).get("msg_like", "{user} ส่งไลก์")
+                
+                lang = get_language()
+                if lang == "en" and fmt == "{user} ส่งไลก์":
+                    fmt = "{user} sent likes"
+                elif lang == "th" and fmt == "{user} sent likes":
+                    fmt = "{user} ส่งไลก์"
+                    
                 speak_text = fmt.replace("{user}", nickname)
                 
                 if self.total_likes % 500 == 0:
-                    speak_text += f" ยอดไลก์รวม {self.total_likes}"
+                    if lang == "en":
+                        speak_text += f" Total likes: {self.total_likes}"
+                    else:
+                        speak_text += f" ยอดไลก์รวม {self.total_likes}"
                     
                 self.audio.add_to_queue(speak_text, 2, "sfx_like", channel="comment")
-                self.ui_callback("history", f"♥ {nickname} กดถูกใจ (ยอดรวม {self.total_likes})")
+                
+                if lang == "en":
+                    self.ui_callback("history", f"♥ {nickname} liked (Total {self.total_likes})")
+                else:
+                    self.ui_callback("history", f"♥ {nickname} กดถูกใจ (ยอดรวม {self.total_likes})")
 
         @self.client.on(ShareEvent)
         async def on_share(event: ShareEvent):
@@ -493,9 +538,20 @@ class TikTokManager:
 
             if read_share:
                 fmt = config.get("Settings", {}).get("msg_share", "{user} แชร์ไลฟ์ของคุณ")
+                
+                lang = get_language()
+                if lang == "en" and fmt == "{user} แชร์ไลฟ์ของคุณ":
+                    fmt = "{user} shared your live"
+                elif lang == "th" and fmt == "{user} shared your live":
+                    fmt = "{user} แชร์ไลฟ์ของคุณ"
+                    
                 speak_text = fmt.replace("{user}", nickname)
                 self.audio.add_to_queue(speak_text, 8, "sfx_share", channel="comment")
-                self.ui_callback("history", f"↗ {nickname} แชร์ไลฟ์สด")
+                
+                if lang == "en":
+                    self.ui_callback("history", f"↗ {nickname} shared live stream")
+                else:
+                    self.ui_callback("history", f"↗ {nickname} แชร์ไลฟ์สด")
 
         @self.client.on(SubscribeEvent)
         async def on_subscription(event: SubscribeEvent):
@@ -515,9 +571,20 @@ class TikTokManager:
 
             if read_vip:
                 fmt = config.get("Settings", {}).get("msg_vip", "{user} สมัครสมาชิกช่อง")
+                
+                lang = get_language()
+                if lang == "en" and fmt == "{user} สมัครสมาชิกช่อง":
+                    fmt = "{user} subscribed to the channel"
+                elif lang == "th" and fmt == "{user} subscribed to the channel":
+                    fmt = "{user} สมัครสมาชิกช่อง"
+                    
                 speak_text = fmt.replace("{user}", nickname)
                 self.audio.add_to_queue(speak_text, 8, "sfx_gift", channel="gift")
-                self.ui_callback("history", f"★ VIP {nickname} สมัครสมาชิกช่อง")
+                
+                if lang == "en":
+                    self.ui_callback("history", f"★ VIP {nickname} subscribed")
+                else:
+                    self.ui_callback("history", f"★ VIP {nickname} สมัครสมาชิกช่อง")
 
         @self.client.on(FollowEvent)
         async def on_follow(event: FollowEvent):
@@ -532,13 +599,18 @@ class TikTokManager:
             
             # เล่นเอฟเฟกต์เสียงและอ่านเสียงแจ้งเตือนผ่าน Soundboard
             self.soundboard.trigger_event_effect("new_follower", nickname)
-            self.ui_callback("history", f"➕ {nickname} กดติดตามคุณแล้ว")
+            
+            lang = get_language()
+            if lang == "en":
+                self.ui_callback("history", f"➕ {nickname} followed you")
+            else:
+                self.ui_callback("history", f"➕ {nickname} กดติดตามคุณแล้ว")
 
         @self.client.on(DisconnectEvent)
         async def on_disconnect(event: DisconnectEvent):
             self.is_connected = False
             self.ui_callback("disconnected", self.room_id)
-            self.audio.add_to_queue("หลุดการเชื่อมต่อไลฟ์สดแล้วค่ะ", 8, channel="tts")
+            self.audio.add_to_queue(tr("MSG_DISCONNECTED"), 8, channel="tts")
             self.db.save_live_metric("live_end", time.strftime("%Y-%m-%d %H:%M:%S"))
 
     def _run_periodic_announcements(self):
@@ -564,12 +636,21 @@ class TikTokManager:
 
                 if announce_stats:
                     stats = self.db.get_summary_statistics()
-                    announcement = (
-                        f"รายงานผู้จัดไลฟ์: ขณะนี้มีผู้ชมสะสม {stats['total_viewers']} คน, "
-                        f"ได้รับผู้ติดตามใหม่ {stats['total_followers']} คน, "
-                        f"ยอดไลก์สะสม {self.total_likes} ครั้ง, "
-                        f"มีข้อความคอมเมนต์ใหม่ในระบบ {stats['total_comments']} ข้อความค่ะ"
-                    )
+                    
+                    if get_language() == "en":
+                        announcement = (
+                            f"Streamer Report: Currently there are {stats['total_viewers']} total viewers, "
+                            f"received {stats['total_followers']} new followers, "
+                            f"total likes {self.total_likes}, "
+                            f"and {stats['total_comments']} new comments in the system."
+                        )
+                    else:
+                        announcement = (
+                            f"รายงานผู้จัดไลฟ์: ขณะนี้มีผู้ชมสะสม {stats['total_viewers']} คน, "
+                            f"ได้รับผู้ติดตามใหม่ {stats['total_followers']} คน, "
+                            f"ยอดไลก์สะสม {self.total_likes} ครั้ง, "
+                            f"มีข้อความคอมเมนต์ใหม่ในระบบ {stats['total_comments']} ข้อความค่ะ"
+                        )
                     self.audio.add_to_queue(announcement, 8, channel="tts")
                 last_5min = now
 

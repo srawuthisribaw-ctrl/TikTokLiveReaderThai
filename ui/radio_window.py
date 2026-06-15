@@ -1,8 +1,11 @@
 import wx
 import os
+import json
 from typing import Dict, Any, List
 from services.radio_service import RadioService
 from accessibility.reader_helper import ReaderHelper
+
+from core.i18n import tr, get_language
 
 class RadioWindow(wx.Frame):
     """
@@ -10,11 +13,13 @@ class RadioWindow(wx.Frame):
     การเข้าถึงออกแบบตามหลักอารยะสากลสำหรับตัวอ่านหน้าจอ
     """
     def __init__(self, parent: wx.Window, radio_service: RadioService, speak_fn: Any, config_path: str):
-        super().__init__(parent, title="เครื่องเล่นวิทยุออนไลน์สำหรับสตรีมเมอร์", size=(450, 350))
+        super().__init__(parent, title=tr("TITLE_RADIO", "เครื่องเล่นวิทยุออนไลน์สำหรับสตรีมเมอร์"), size=(450, 350))
         self.radio = radio_service
         self.speak_fn = speak_fn
         self.config_path = config_path
         self.reader = ReaderHelper(speak_fn)
+        
+        lang = get_language()
         
         self.panel = wx.Panel(self)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
@@ -27,50 +32,78 @@ class RadioWindow(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self._on_close)
         
         # ประกาศเมื่อหน้าจอโผล่
-        self.reader.announce_navigation("เปิดหน้าต่างเครื่องเล่นวิทยุออนไลน์แล้วค่ะ", 8)
+        if lang == "en":
+            self.reader.announce_navigation("Online radio player window opened.", 8)
+        else:
+            self.reader.announce_navigation("เปิดหน้าต่างเครื่องเล่นวิทยุออนไลน์แล้วค่ะ", 8)
 
     def _init_controls(self):
+        lang = get_language()
+        
         # 1. กลุ่มสถานี
-        self.choice_stations = wx.Choice(self.panel, choices=[s["name"] for s in self.radio.stations])
+        choices = [self.radio._translate_station_name(s["name"]) for s in self.radio.stations]
+        self.choice_stations = wx.Choice(self.panel, choices=choices)
         self.choice_stations.SetSelection(self.radio.current_idx)
         self.choice_stations.Bind(wx.EVT_CHOICE, self._on_station_select)
-        self.reader.bind_choice_announcement(self.choice_stations, "เลือกช่องสถานีวิทยุออนไลน์")
+        
+        if lang == "en":
+            self.reader.bind_choice_announcement(self.choice_stations, "Select online radio station channel")
+        else:
+            self.reader.bind_choice_announcement(self.choice_stations, "เลือกช่องสถานีวิทยุออนไลน์")
 
         # 2. ปุ่มควบคุม
-        self.btn_play = wx.Button(self.panel, label="เปิดวิทยุ")
-        self.btn_stop = wx.Button(self.panel, label="หยุดวิทยุ")
-        self.btn_prev = wx.Button(self.panel, label="สถานีก่อนหน้า")
-        self.btn_next = wx.Button(self.panel, label="สถานีถัดไป")
+        self.btn_play = wx.Button(self.panel, label="Play Radio" if lang == "en" else "เปิดวิทยุ")
+        self.btn_stop = wx.Button(self.panel, label="Stop Radio" if lang == "en" else "หยุดวิทยุ")
+        self.btn_prev = wx.Button(self.panel, label="Previous Station" if lang == "en" else "สถานีก่อนหน้า")
+        self.btn_next = wx.Button(self.panel, label="Next Station" if lang == "en" else "สถานีถัดไป")
         
         self.btn_play.Bind(wx.EVT_BUTTON, self._on_play_click)
         self.btn_stop.Bind(wx.EVT_BUTTON, self._on_stop_click)
         self.btn_prev.Bind(wx.EVT_BUTTON, self._on_prev_click)
         self.btn_next.Bind(wx.EVT_BUTTON, self._on_next_click)
 
-        self.reader.bind_focus_announcement(self.btn_play, "ปุ่มเริ่มเล่นสถานีวิทยุออนไลน์ที่เลือก")
-        self.reader.bind_focus_announcement(self.btn_stop, "ปุ่มหยุดเล่นวิทยุ")
-        self.reader.bind_focus_announcement(self.btn_prev, "ปุ่มเปลี่ยนช่องสถานีเป็นช่องก่อนหน้า")
-        self.reader.bind_focus_announcement(self.btn_next, "ปุ่มเปลี่ยนช่องสถานีเป็นช่องถัดไป")
+        if lang == "en":
+            self.reader.bind_focus_announcement(self.btn_play, "Play selected online radio station button")
+            self.reader.bind_focus_announcement(self.btn_stop, "Stop playing radio button")
+            self.reader.bind_focus_announcement(self.btn_prev, "Switch to previous radio station button")
+            self.reader.bind_focus_announcement(self.btn_next, "Switch to next radio station button")
+        else:
+            self.reader.bind_focus_announcement(self.btn_play, "ปุ่มเริ่มเล่นสถานีวิทยุออนไลน์ที่เลือก")
+            self.reader.bind_focus_announcement(self.btn_stop, "ปุ่มหยุดเล่นวิทยุ")
+            self.reader.bind_focus_announcement(self.btn_prev, "ปุ่มเปลี่ยนช่องสถานีเป็นช่องก่อนหน้า")
+            self.reader.bind_focus_announcement(self.btn_next, "ปุ่มเปลี่ยนช่องสถานีเป็นช่องถัดไป")
 
         # 3. ระดับความดัง
-        self.lbl_volume = wx.StaticText(self.panel, label=f"ความดังวิทยุ: {self.radio.volume_pct}%")
+        vol_label = f"Radio Volume: {self.radio.volume_pct}%" if lang == "en" else f"ความดังวิทยุ: {self.radio.volume_pct}%"
+        self.lbl_volume = wx.StaticText(self.panel, label=vol_label)
         self.sld_volume = wx.Slider(self.panel, value=self.radio.volume_pct, minValue=0, maxValue=100, style=wx.SL_HORIZONTAL)
         self.sld_volume.Bind(wx.EVT_SLIDER, self._on_volume_scroll)
-        self.reader.bind_slider_announcement(self.sld_volume, "ระดับเสียงวิทยุ", "เปอร์เซ็นต์")
+        
+        if lang == "en":
+            self.reader.bind_slider_announcement(self.sld_volume, "Radio volume", "percent")
+        else:
+            self.reader.bind_slider_announcement(self.sld_volume, "ระดับเสียงวิทยุ", "เปอร์เซ็นต์")
 
         # 4. ปุ่มควบคุมความดังด่วน (สำหรับ accessibility เพิ่ม/ลดทีละ 10%)
-        self.btn_vol_down = wx.Button(self.panel, label="ลดเสียงวิทยุ (-10%)")
-        self.btn_vol_up = wx.Button(self.panel, label="เพิ่มเสียงวิทยุ (+10%)")
+        self.btn_vol_down = wx.Button(self.panel, label="Decrease Volume (-10%)" if lang == "en" else "ลดเสียงวิทยุ (-10%)")
+        self.btn_vol_up = wx.Button(self.panel, label="Increase Volume (+10%)" if lang == "en" else "เพิ่มเสียงวิทยุ (+10%)")
         
         self.btn_vol_down.Bind(wx.EVT_BUTTON, self._on_vol_down_click)
         self.btn_vol_up.Bind(wx.EVT_BUTTON, self._on_vol_up_click)
 
-        self.reader.bind_focus_announcement(self.btn_vol_down, "ปุ่มลดระดับความดังเสียงลงสิบเปอร์เซ็นต์")
-        self.reader.bind_focus_announcement(self.btn_vol_up, "ปุ่มเพิ่มระดับความดังเสียงขึ้นสิบเปอร์เซ็นต์")
+        if lang == "en":
+            self.reader.bind_focus_announcement(self.btn_vol_down, "Decrease radio volume by ten percent button")
+            self.reader.bind_focus_announcement(self.btn_vol_up, "Increase radio volume by ten percent button")
+        else:
+            self.reader.bind_focus_announcement(self.btn_vol_down, "ปุ่มลดระดับความดังเสียงลงสิบเปอร์เซ็นต์")
+            self.reader.bind_focus_announcement(self.btn_vol_up, "ปุ่มเพิ่มระดับความดังเสียงขึ้นสิบเปอร์เซ็นต์")
 
     def _apply_layout(self):
+        lang = get_language()
+        
         # 1. แถบเลือกสถานี
-        self.vbox.Add(wx.StaticText(self.panel, label="เลือกสถานีวิทยุที่ต้องการเปิด:"), 0, wx.ALL | wx.EXPAND, 8)
+        select_label = "Select radio station to play:" if lang == "en" else "เลือกสถานีวิทยุที่ต้องการเปิด:"
+        self.vbox.Add(wx.StaticText(self.panel, label=select_label), 0, wx.ALL | wx.EXPAND, 8)
         self.vbox.Add(self.choice_stations, 0, wx.ALL | wx.EXPAND, 8)
 
         # 2. ปุ่มเปิด/หยุด
@@ -96,16 +129,23 @@ class RadioWindow(wx.Frame):
         self.panel.SetSizer(self.vbox)
 
     def _update_ui_state(self):
+        lang = get_language()
         self.choice_stations.SetSelection(self.radio.current_idx)
-        self.lbl_volume.SetLabel(f"ความดังวิทยุ: {self.radio.volume_pct}%")
+        vol_label = f"Radio Volume: {self.radio.volume_pct}%" if lang == "en" else f"ความดังวิทยุ: {self.radio.volume_pct}%"
+        self.lbl_volume.SetLabel(vol_label)
         self.sld_volume.SetValue(self.radio.volume_pct)
 
     def _on_station_select(self, event: wx.Event):
+        lang = get_language()
         idx = self.choice_stations.GetSelection()
         self.radio.current_idx = idx
         name = self.radio.stations[idx]["name"]
         self.radio._save_current_station_index()
-        self.reader.announce_text(f"เปลี่ยนช่องวิทยุเป็น {name} สำเร็จค่ะ", 8)
+        translated_name = self.radio._translate_station_name(name)
+        if lang == "en":
+            self.reader.announce_text(f"Changed radio channel to {translated_name} successfully.", 8)
+        else:
+            self.reader.announce_text(f"เปลี่ยนช่องวิทยุเป็น {name} สำเร็จค่ะ", 8)
         if self.radio.is_playing:
             self.radio.stop_radio()
             msg = self.radio.play_current_station()
@@ -130,21 +170,31 @@ class RadioWindow(wx.Frame):
         self._update_ui_state()
 
     def _on_volume_scroll(self, event: wx.Event):
+        lang = get_language()
         val = self.sld_volume.GetValue()
-        self.lbl_volume.SetLabel(f"ความดังวิทยุ: {val}%")
+        vol_label = f"Radio Volume: {val}%" if lang == "en" else f"ความดังวิทยุ: {val}%"
+        self.lbl_volume.SetLabel(vol_label)
         self.radio.set_volume(val)
 
     def _on_vol_down_click(self, event: wx.Event):
+        lang = get_language()
         val = max(0, self.radio.volume_pct - 10)
         self.radio.set_volume(val)
         self._update_ui_state()
-        self.speak_fn(f"ลดความดังวิทยุเป็น {val} เปอร์เซ็นต์ค่ะ", 5)
+        if lang == "en":
+            self.speak_fn(f"Decreased radio volume to {val} percent.", 5)
+        else:
+            self.speak_fn(f"ลดความดังวิทยุเป็น {val} เปอร์เซ็นต์ค่ะ", 5)
 
     def _on_vol_up_click(self, event: wx.Event):
+        lang = get_language()
         val = min(100, self.radio.volume_pct + 10)
         self.radio.set_volume(val)
         self._update_ui_state()
-        self.speak_fn(f"เพิ่มความดังวิทยุเป็น {val} เปอร์เซ็นต์ค่ะ", 5)
+        if lang == "en":
+            self.speak_fn(f"Increased radio volume to {val} percent.", 5)
+        else:
+            self.speak_fn(f"เพิ่มความดังวิทยุเป็น {val} เปอร์เซ็นต์ค่ะ", 5)
 
     def _on_close(self, event: wx.CloseEvent):
         event.Skip()

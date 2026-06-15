@@ -40,6 +40,7 @@ def build_executable():
         "--hidden-import=services.ai_service",
         "--hidden-import=core.command_handler",
         "--hidden-import=core.licensing",
+        "--hidden-import=core.i18n",
         "main.py"
     ]
     
@@ -68,9 +69,17 @@ def build_executable():
     ]
 
     print("\nคัดลอกไฟล์ระบบเคียงข้างตัวโปรแกรม .exe:")
+    internal_dir = os.path.join(dist_dir, "_internal")
+    
     for res_name, is_file in resources:
         src_path = res_name
-        dest_path = os.path.join(dist_dir, res_name)
+        
+        # คัดลอกไปที่ _internal หากเป็นไฟล์/โฟลเดอร์ระบบที่ไม่จำเป็นต้องโชว์ให้ผู้ใช้เห็น
+        is_internal = res_name in ("symbols-en.dic", "nvdaControllerClient_x64.dll", "sounds")
+        if is_internal and os.path.exists(internal_dir):
+            dest_path = os.path.join(internal_dir, res_name)
+        else:
+            dest_path = os.path.join(dist_dir, res_name)
         
         if not os.path.exists(src_path):
             print(f"คำเตือน: ไม่พบไฟล์ต้นทาง {src_path} ข้ามการคัดลอก")

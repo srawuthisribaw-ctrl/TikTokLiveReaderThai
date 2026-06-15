@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional, Tuple
 import sys
 
 if getattr(sys, 'frozen', False):
-    PLAYLISTS_DIR = os.path.join(os.path.dirname(sys.executable), "playlists")
+    PLAYLISTS_DIR = os.path.join(os.path.dirname(sys.executable), "_internal", "playlists")
 else:
     PLAYLISTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "playlists")
 
@@ -97,9 +97,11 @@ class MusicService:
     # --- ฟังก์ชันควบคุมสิทธิ์เครื่องเล่น ---
     def play_song(self) -> str:
         """เริ่มเล่นเพลง ณ ดัชนีปัจจุบัน"""
+        from core.i18n import get_language
+        lang = get_language()
         tracks = self.playlists.get(self.current_playlist_name, [])
         if not tracks:
-            msg = f"ไม่พบไฟล์เพลงในเพลย์ลิสต์ {self.current_playlist_name} กรุณาเพิ่มเพลงก่อนค่ะ"
+            msg = f"No music files found in playlist {self.current_playlist_name}. Please add music first." if lang == "en" else f"ไม่พบไฟล์เพลงในเพลย์ลิสต์ {self.current_playlist_name} กรุณาเพิ่มเพลงก่อนค่ะ"
             self.speak_fn(msg, 8)
             return msg
 
@@ -125,32 +127,45 @@ class MusicService:
             self.is_paused = False
             
             # สั่ง TTS อ่านชื่อเพลง
-            announce_text = f"กำลังเล่นเพลง {song_name[:-4] if '.' in song_name else song_name} หมายเลข {self.current_song_idx + 1}"
+            clean_song_name = song_name[:-4] if '.' in song_name else song_name
+            announce_text = f"Playing song {clean_song_name} number {self.current_song_idx + 1}" if lang == "en" else f"กำลังเล่นเพลง {clean_song_name} หมายเลข {self.current_song_idx + 1}"
             self.speak_fn(announce_text, 8)
             return announce_text
         except Exception as e:
-            msg = f"ไม่สามารถเล่นไฟล์ {song_name} ได้ในขณะนี้เนื่องจากปัญหาตัวถอดรหัส"
+            msg = f"Cannot play file {song_name} due to decoder issue." if lang == "en" else f"ไม่สามารถเล่นไฟล์ {song_name} ได้ในขณะนี้เนื่องจากปัญหาตัวถอดรหัส"
             self.speak_fn(msg, 8)
             return msg
 
     def pause_or_resume(self) -> str:
         """หยุดเพลงชั่วคราวหรือเล่นต่อ"""
+        from core.i18n import get_language
+        lang = get_language()
         if not self.is_playing:
             return self.play_song()
 
         if self.is_paused:
             pygame.mixer.music.unpause()
             self.is_paused = False
-            self.speak_fn("เล่นเพลงต่อค่ะ", 5)
-            return "เล่นเพลงต่อ"
+            if lang == "en":
+                self.speak_fn("Resuming song.", 5)
+                return "Resuming song"
+            else:
+                self.speak_fn("เล่นเพลงต่อค่ะ", 5)
+                return "เล่นเพลงต่อ"
         else:
             pygame.mixer.music.pause()
             self.is_paused = True
-            self.speak_fn("หยุดเพลงชั่วคราวค่ะ", 5)
-            return "หยุดเพลงชั่วคราว"
+            if lang == "en":
+                self.speak_fn("Song paused.", 5)
+                return "Song paused"
+            else:
+                self.speak_fn("หยุดเพลงชั่วคราวค่ะ", 5)
+                return "หยุดเพลงชั่วคราว"
 
     def stop_music(self):
         """หยุดและเคลียร์การเล่นเพลงหลัก"""
+        from core.i18n import get_language
+        lang = get_language()
         try:
             pygame.mixer.music.stop()
             pygame.mixer.music.unload()
@@ -158,13 +173,18 @@ class MusicService:
             pass
         self.is_playing = False
         self.is_paused = False
-        self.speak_fn("ปิดระบบเครื่องเล่นเพลงแล้วค่ะ", 5)
+        if lang == "en":
+            self.speak_fn("Music player stopped.", 5)
+        else:
+            self.speak_fn("ปิดระบบเครื่องเล่นเพลงแล้วค่ะ", 5)
 
     def next_track(self) -> str:
         """ข้ามเพลงไปเพลงถัดไป"""
+        from core.i18n import get_language
+        lang = get_language()
         tracks = self.playlists.get(self.current_playlist_name, [])
         if not tracks:
-            return "ไม่มีเพลงในเพลย์ลิสต์"
+            return "No songs in playlist" if lang == "en" else "ไม่มีเพลงในเพลย์ลิสต์"
 
         if self.shuffle:
             self.current_song_idx = random.randint(0, len(tracks) - 1)
@@ -175,9 +195,11 @@ class MusicService:
 
     def prev_track(self) -> str:
         """ย้อนกลับไปเพลงก่อนหน้า"""
+        from core.i18n import get_language
+        lang = get_language()
         tracks = self.playlists.get(self.current_playlist_name, [])
         if not tracks:
-            return "ไม่มีเพลงในเพลย์ลิสต์"
+            return "No songs in playlist" if lang == "en" else "ไม่มีเพลงในเพลย์ลิสต์"
 
         self.current_song_idx = (self.current_song_idx - 1 + len(tracks)) % len(tracks)
         return self.play_song()
@@ -274,6 +296,8 @@ class MusicService:
 
     def add_viewer_request(self, nickname: str, song_name: str) -> str:
         """ผู้ชมแชท !ขอเพลง หรือ !เพลง เพื่อนำคิวจองเข้าห้อง"""
+        from core.i18n import get_language
+        lang = get_language()
         self.request_counter += 1
         req = {
             "id": self.request_counter,
@@ -282,28 +306,38 @@ class MusicService:
             "status": "pending"
         }
         self.request_queue.append(req)
-        return f"เพิ่มเพลง {song_name} ที่ขอโดยคุณ {nickname} เข้าสู่คิวเรียบร้อยแล้วค่ะ"
+        return f"Successfully requested {song_name} by {nickname} (Queue #{self.request_counter})" if lang == "en" else f"เพิ่มเพลง {song_name} ที่ขอโดยคุณ {nickname} เข้าสู่คิวเรียบร้อยแล้วค่ะ"
 
     def approve_viewer_request(self, request_id: int) -> Tuple[bool, str]:
         """สตรีมเมอร์กดอนุมัติเพลงและสั่งพูดประกาศชื่อเพื่อเล่น"""
+        from core.i18n import get_language
+        lang = get_language()
         for req in self.request_queue:
             if req["id"] == request_id and req["status"] == "pending":
                 req["status"] = "approved"
                 
                 # ประกาศออกลำโพง
-                msg = f"อนุมัติเพลงคำขอ {req['song']} เรียบร้อยแล้วค่ะ"
+                if lang == "en":
+                    msg = f"Approved song request for {req['song']} successfully."
+                else:
+                    msg = f"อนุมัติเพลงคำขอ {req['song']} เรียบร้อยแล้วค่ะ"
                 self.speak_fn(msg, 8)
                 return True, msg
-        return False, "ไม่พบรหัสคิวขอเพลงดังกล่าว"
+        return False, "Song request ID not found" if lang == "en" else "ไม่พบรหัสคิวขอเพลงดังกล่าว"
 
     def reject_viewer_request(self, request_id: int) -> Tuple[bool, str]:
+        from core.i18n import get_language
+        lang = get_language()
         for req in self.request_queue:
             if req["id"] == request_id and req["status"] == "pending":
                 req["status"] = "rejected"
-                msg = f"ปฏิเสธเพลง {req['song']} เรียบร้อยแล้วค่ะ"
+                if lang == "en":
+                    msg = f"Rejected song request for {req['song']} successfully."
+                else:
+                    msg = f"ปฏิเสธเพลง {req['song']} เรียบร้อยแล้วค่ะ"
                 self.speak_fn(msg, 8)
                 return True, msg
-        return False, "ไม่พบรหัสคิวขอเพลงดังกล่าว"
+        return False, "Song request ID not found" if lang == "en" else "ไม่พบรหัสคิวขอเพลงดังกล่าว"
 
     def request_song(self, nickname: str, song_name: str) -> str:
         """คีย์เสริมเชื่อมต่อเข้ากับ command_handler"""

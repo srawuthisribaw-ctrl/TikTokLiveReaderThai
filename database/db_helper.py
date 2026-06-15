@@ -6,7 +6,7 @@ from typing import Dict, List, Any, Optional
 import sys
 
 if getattr(sys, 'frozen', False):
-    DB_FILE = os.path.join(os.path.dirname(sys.executable), "tiktok_live_reader.db")
+    DB_FILE = os.path.join(os.path.dirname(sys.executable), "_internal", "tiktok_live_reader.db")
 else:
     DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tiktok_live_reader.db")
 

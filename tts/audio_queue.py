@@ -11,7 +11,9 @@ import sys
 
 # โฟลเดอร์เก็บไฟล์เสียงประกอบ
 if getattr(sys, 'frozen', False):
-    SOUNDS_DIR = os.path.join(os.path.dirname(sys.executable), "sounds")
+    SOUNDS_DIR = os.path.join(os.path.dirname(sys.executable), "_internal", "sounds")
+    if not os.path.exists(SOUNDS_DIR):
+        SOUNDS_DIR = os.path.join(os.path.dirname(sys.executable), "sounds")
 else:
     SOUNDS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sounds")
 

@@ -4,13 +4,15 @@ from database.db_helper import DatabaseHelper
 from accessibility.reader_helper import ReaderHelper
 from typing import Dict, Any, List
 
+from core.i18n import tr
+
 class StatsWindow(wx.Frame):
     """
     หน้าต่างสำหรับสรุปและวิเคราะห์ผลลัพธ์การไลฟ์สด (Live Stats & Leaderboards)
     ออกแบบให้จัดระบบการขยายตัวอักษรและพูดข้อมูลสะท้อนกลับเพื่อให้สอดคล้องกับตัวอ่านหน้าจอ
     """
     def __init__(self, parent: wx.Window, config_path: str, speak_fn: Any):
-        super().__init__(parent, title="สรุปสถิติจำลองการไลฟ์สดและผู้สนับสนุน", size=(500, 600))
+        super().__init__(parent, title=tr("TITLE_STATS", "สรุปสถิติจำลองการไลฟ์สดและผู้สนับสนุน"), size=(500, 600))
         self.config_path = config_path
         self.speak_fn = speak_fn
         self.db = DatabaseHelper()
@@ -20,26 +22,26 @@ class StatsWindow(wx.Frame):
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         
         # 1. ข้อความหัวเรื่องหน้าต่าง
-        self.lbl_title = wx.StaticText(self.panel, label="สรุปข้อมูลสถิติช่อง TikTok Live", style=wx.ALIGN_CENTER)
+        self.lbl_title = wx.StaticText(self.panel, label=tr("LBL_STATS_TITLE", "สรุปข้อมูลสถิติช่อง TikTok Live"), style=wx.ALIGN_CENTER)
         self.lbl_title.SetFont(wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
         self.vbox.Add(self.lbl_title, 0, wx.ALL | wx.ALIGN_CENTER, 10)
         
         # 2. รายการข้อมูลสรุปไลฟ์
-        self.vbox.Add(wx.StaticText(self.panel, label="ภาพรวมและรายรับจากเพชรสะสม:"), 0, wx.ALL, 5)
+        self.vbox.Add(wx.StaticText(self.panel, label=tr("LBL_STATS_OVERVIEW", "ภาพรวมและรายรับจากเพชรสะสม:")), 0, wx.ALL, 5)
         self.list_summary = wx.ListBox(self.panel, style=wx.LB_SINGLE)
-        self.reader.bind_focus_announcement(self.list_summary, "รายการประวัติสรุปสถิติภาพรวมไลฟ์สด กดลูกศรลงเพื่ออ่านข้อมูล")
+        self.reader.bind_focus_announcement(self.list_summary, tr("FOCUS_STATS_OVERVIEW", "รายการประวัติสรุปสถิติภาพรวมไลฟ์สด กดลูกศรลงเพื่ออ่านข้อมูล"))
         self.vbox.Add(self.list_summary, 1, wx.EXPAND | wx.ALL, 5)
         
         # 3. ตารางผู้สนับสนุนสูงสุด
-        self.vbox.Add(wx.StaticText(self.panel, label="อันดับผู้สนับสนุนสูงสุดประจำสตรีม (Fanclub Leaderboards):"), 0, wx.ALL, 5)
+        self.vbox.Add(wx.StaticText(self.panel, label=tr("LBL_STATS_LEADERBOARD", "อันดับผู้สนับสนุนสูงสุดประจำสตรีม (Fanclub Leaderboards):")), 0, wx.ALL, 5)
         self.list_leaderboard = wx.ListBox(self.panel, style=wx.LB_SINGLE)
-        self.reader.bind_focus_announcement(self.list_leaderboard, "รายการอันดับแฟนคลับผู้สนับสนุนสูงสุดสามอันดับแรก")
+        self.reader.bind_focus_announcement(self.list_leaderboard, tr("FOCUS_STATS_LEADERBOARD", "รายการอันดับแฟนคลับผู้สนับสนุนสูงสุดสามอันดับแรก"))
         self.vbox.Add(self.list_leaderboard, 1, wx.EXPAND | wx.ALL, 5)
         
         # ปุ่มควบคุมปิด
-        self.btn_close = wx.Button(self.panel, label="ปิดหน้าต่างสถิติ")
+        self.btn_close = wx.Button(self.panel, label=tr("BTN_CLOSE_STATS", "ปิดหน้าต่างสถิติ"))
         self.btn_close.Bind(wx.EVT_BUTTON, lambda e: self.Close())
-        self.reader.bind_focus_announcement(self.btn_close, "ปุ่มปิดหน้าต่างสถิติ ย้อนกลับสู่หน้าจอหลัก")
+        self.reader.bind_focus_announcement(self.btn_close, tr("FOCUS_BTN_CLOSE_STATS", "ปุ่มปิดหน้าต่างสถิติ ย้อนกลับสู่หน้าจอหลัก"))
         self.vbox.Add(self.btn_close, 0, wx.ALIGN_RIGHT | wx.ALL, 10)
         
         self.panel.SetSizer(self.vbox)
@@ -49,10 +51,12 @@ class StatsWindow(wx.Frame):
         self.apply_theme()
         
         # ประกาศหน้าจอด่วนเพื่อประโยชน์ของคนตาบอดเมื่อหน้าจอโผล่
-        wx.CallAfter(lambda: self.reader.announce_navigation("เปิดหน้าต่างสถิติและคะแนนผู้สนับสนุนแล้วค่ะ", 8))
+        wx.CallAfter(lambda: self.reader.announce_navigation(tr("MSG_OPENED_STATS", "เปิดหน้าต่างสถิติและคะแนนผู้สนับสนุนแล้วค่ะ"), 8))
 
     def _load_live_stats(self):
         """ดึงข้อมูลสถิติล่าสุดจาก SQLite และป้อนเข้า List Box"""
+        from core.i18n import get_language
+        lang = get_language()
         stats = self.db.get_summary_statistics()
         
         # คำนวณถูกใจสะสม
@@ -61,29 +65,45 @@ class StatsWindow(wx.Frame):
             total_likes = int(total_likes_rows[0]["total_l"]) if total_likes_rows and total_likes_rows[0]["total_l"] else 0
         except:
             total_likes = 0
-
+ 
         # ป้อนลงรายการสรุป
-        summary_items = [
-            f"ยอดผู้ชมสะสม: {stats['total_viewers']} คน",
-            f"ข้อความคอมเมนต์รวม: {stats['total_comments']} แชท",
-            f"จำนวนของขวัญที่ได้รับ: {stats['total_gifts']} ชิ้น",
-            f"เพชรสะสม (Diamonds): {stats['total_diamonds']} เม็ด",
-            f"ผู้กดติดตามใหม่: {stats['total_followers']} คน",
-            f"ยอดกดถูกใจรวม: {total_likes} ไลก์",
-            f"รายได้ประมาณจากการสตรีม: {stats['estimated_earnings_thb']:.2f} บาท"
-        ]
+        if lang == "en":
+            summary_items = [
+                f"Total Viewers: {stats['total_viewers']}",
+                f"Total Comments: {stats['total_comments']}",
+                f"Total Gifts: {stats['total_gifts']}",
+                f"Diamonds: {stats['total_diamonds']}",
+                f"New Followers: {stats['total_followers']}",
+                f"Total Likes: {total_likes}",
+                f"Estimated Earnings: {stats['estimated_earnings_thb']:.2f} THB"
+            ]
+        else:
+            summary_items = [
+                f"ยอดผู้ชมสะสม: {stats['total_viewers']} คน",
+                f"ข้อความคอมเมนต์รวม: {stats['total_comments']} ข้อความ",
+                f"จำนวนของขวัญที่ได้รับ: {stats['total_gifts']} ชิ้น",
+                f"เพชรสะสม (Diamonds): {stats['total_diamonds']} เม็ด",
+                f"ผู้กดติดตามใหม่: {stats['total_followers']} คน",
+                f"ยอดกดถูกใจรวม: {total_likes} ไลก์",
+                f"รายได้ประมาณจากการสตรีม: {stats['estimated_earnings_thb']:.2f} บาท"
+            ]
         self.list_summary.Set(summary_items)
         
         # โหลดลีดเดอร์บอร์ดคนดูสูงสุด 5 อันดับแรก
         top_viewers = self.db.get_top_viewers(5)
         leader_items = []
         for idx, viewer in enumerate(top_viewers):
-            leader_items.append(
-                f"อันดับที่ {idx + 1}: {viewer['nickname']} (สะสม {viewer['points']} คะแนน, เลเวล {viewer['level']})"
-            )
+            if lang == "en":
+                leader_items.append(
+                    f"Rank {idx + 1}: {viewer['nickname']} ({viewer['points']} Points, Level {viewer['level']})"
+                )
+            else:
+                leader_items.append(
+                    f"อันดับที่ {idx + 1}: {viewer['nickname']} (สะสม {viewer['points']} คะแนน, เลเวล {viewer['level']})"
+                )
         
         if not leader_items:
-            leader_items = ["ยังไม่มีการจัดอันดับสะสมคะแนนคนดู"]
+            leader_items = ["No viewer rankings available yet." if lang == "en" else "ยังไม่มีการจัดอันดับสะสมคะแนนคนดู"]
         self.list_leaderboard.Set(leader_items)
 
     def apply_theme(self):

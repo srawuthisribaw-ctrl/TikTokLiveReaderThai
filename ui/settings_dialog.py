@@ -3,6 +3,7 @@ import json
 import os
 from typing import Dict, Any, List
 from accessibility.reader_helper import ReaderHelper
+from core.i18n import tr
 
 class SettingsDialog(wx.Dialog):
     """
@@ -10,14 +11,14 @@ class SettingsDialog(wx.Dialog):
     รองรับการควบคุมผ่านแป้นพิมพ์ 100% พร้อมตัวควบคุมมิกเซอร์เสียง (Mixer Volume) และ TTS ตลก
     """
     def __init__(self, parent: wx.Window, config_path: str, speak_fn: Any):
-        super().__init__(parent, title="ตั้งค่าระบบหลัก", size=(600, 700))
+        super().__init__(parent, title=tr("TITLE_SETTINGS"), size=(600, 700))
         self.config_path = config_path
         self.speak_fn = speak_fn
         self.reader = ReaderHelper(speak_fn)
         
         # โหลดค่าคอนฟิกปัจจุบัน
         self.config_data = self._load_config()
-
+ 
         # สร้างแผงควบคุมหลัก
         self.panel = wx.Panel(self)
         self.notebook = wx.Notebook(self.panel)
@@ -29,12 +30,12 @@ class SettingsDialog(wx.Dialog):
         self.tab_mixer = wx.Panel(self.notebook)  # แท็บที่ 5 ใหม่
         self.tab_ai = wx.Panel(self.notebook)
         
-        self.notebook.AddPage(self.tab_reading, "การอ่านข้อมูล")
-        self.notebook.AddPage(self.tab_tts, "เสียงอ่าน (TTS)")
-        self.notebook.AddPage(self.tab_sfx, "เสียงประกอบ (SFX)")
-        self.notebook.AddPage(self.tab_mixer, "มิกเซอร์ระดับเสียง")
-        self.notebook.AddPage(self.tab_ai, "ผู้ช่วย AI")
-
+        self.notebook.AddPage(self.tab_reading, tr("TAB_READING"))
+        self.notebook.AddPage(self.tab_tts, tr("TAB_TTS"))
+        self.notebook.AddPage(self.tab_sfx, tr("TAB_SFX"))
+        self.notebook.AddPage(self.tab_mixer, tr("TAB_MIXER"))
+        self.notebook.AddPage(self.tab_ai, tr("TAB_AI"))
+ 
         # บูตหน้าจอของแต่ละแท็บ
         self._init_reading_tab()
         self._init_tts_tab()
@@ -44,18 +45,18 @@ class SettingsDialog(wx.Dialog):
         
         # ผูกเหตุการณ์เมื่อผู้ใช้สลับแท็บ
         self.notebook.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_tab_changed)
-
+ 
         # ออกแบบโครงสร้างปุ่มตกลง/ยกเลิก
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.notebook, 1, wx.EXPAND | wx.ALL, 5)
         
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.btn_save = wx.Button(self.panel, label="บันทึกการตั้งค่า")
-        self.btn_cancel = wx.Button(self.panel, id=wx.ID_CANCEL, label="ยกเลิก")
+        self.btn_save = wx.Button(self.panel, label=tr("BTN_SAVE"))
+        self.btn_cancel = wx.Button(self.panel, id=wx.ID_CANCEL, label=tr("BTN_CANCEL"))
         
         self.btn_save.Bind(wx.EVT_BUTTON, self._on_save_click)
-        self.reader.bind_focus_announcement(self.btn_save, "ปุ่มบันทึกการตั้งค่า กดตกลงเพื่อใช้งาน")
-        self.reader.bind_focus_announcement(self.btn_cancel, "ปุ่มยกเลิกปิดหน้าต่างการตั้งค่า")
+        self.reader.bind_focus_announcement(self.btn_save, tr("FOCUS_BTN_SAVE"))
+        self.reader.bind_focus_announcement(self.btn_cancel, tr("FOCUS_BTN_CANCEL"))
         
         btn_sizer.Add(self.btn_save, 1, wx.ALL | wx.EXPAND, 5)
         btn_sizer.Add(self.btn_cancel, 1, wx.ALL | wx.EXPAND, 5)
@@ -77,14 +78,22 @@ class SettingsDialog(wx.Dialog):
         vbox = wx.BoxSizer(wx.VERTICAL)
         cfg = self.config_data.get("Settings", {})
         
-        self.chk_comment = wx.CheckBox(self.tab_reading, label="อ่านคอมเมนต์สดในแชท (Chat)")
-        self.chk_join = wx.CheckBox(self.tab_reading, label="อ่านแจ้งเตือนเมื่อคนเข้าไลฟ์ (Join)")
-        self.chk_gift = wx.CheckBox(self.tab_reading, label="อ่านแจ้งเตือนของขวัญ (Gift)")
-        self.chk_like = wx.CheckBox(self.tab_reading, label="อ่านแจ้งเตือนถูกใจ (Like)")
-        self.chk_share = wx.CheckBox(self.tab_reading, label="อ่านแจ้งเตือนแชร์ไลฟ์ (Share)")
-        self.chk_vip = wx.CheckBox(self.tab_reading, label="อ่านแจ้งเตือนสมัครสมาชิก VIP (Sub)")
-        self.chk_emoji = wx.CheckBox(self.tab_reading, label="แปลรูปภาพและอีโมจิเป็นคำพูด (Emoji)")
-
+        # เลือกภาษาของระบบ
+        vbox.Add(wx.StaticText(self.tab_reading, label=tr("LBL_SYSTEM_LANG")), 0, wx.ALL, 5)
+        self.choice_lang = wx.Choice(self.tab_reading, choices=["ภาษาไทย (Thai)", "English"])
+        lang = cfg.get("language", "th")
+        self.choice_lang.SetSelection(0 if lang == "th" else 1)
+        self.reader.bind_choice_announcement(self.choice_lang, tr("LBL_SYSTEM_LANG"))
+        vbox.Add(self.choice_lang, 0, wx.EXPAND | wx.ALL, 5)
+        
+        self.chk_comment = wx.CheckBox(self.tab_reading, label=tr("CHK_COMMENT"))
+        self.chk_join = wx.CheckBox(self.tab_reading, label=tr("CHK_JOIN"))
+        self.chk_gift = wx.CheckBox(self.tab_reading, label=tr("CHK_GIFT"))
+        self.chk_like = wx.CheckBox(self.tab_reading, label=tr("CHK_LIKE"))
+        self.chk_share = wx.CheckBox(self.tab_reading, label=tr("CHK_SHARE"))
+        self.chk_vip = wx.CheckBox(self.tab_reading, label=tr("CHK_VIP"))
+        self.chk_emoji = wx.CheckBox(self.tab_reading, label=tr("CHK_EMOJI"))
+ 
         self.chk_comment.SetValue(cfg.get("read_comment", True))
         self.chk_join.SetValue(cfg.get("read_join", False))
         self.chk_gift.SetValue(cfg.get("read_gift", True))
@@ -92,24 +101,24 @@ class SettingsDialog(wx.Dialog):
         self.chk_share.SetValue(cfg.get("read_share", True))
         self.chk_vip.SetValue(cfg.get("read_vip", True))
         self.chk_emoji.SetValue(cfg.get("read_emoji", True))
-
-        self.reader.bind_checkbox_announcement(self.chk_comment, "อ่านคอมเมนต์สดในแชท")
-        self.reader.bind_checkbox_announcement(self.chk_join, "อ่านแจ้งเตือนคนเข้าห้อง")
-        self.reader.bind_checkbox_announcement(self.chk_gift, "อ่านแจ้งเตือนของขวัญ")
-        self.reader.bind_checkbox_announcement(self.chk_like, "อ่านแจ้งเตือนการกดถูกใจ")
-        self.reader.bind_checkbox_announcement(self.chk_share, "อ่านแจ้งเตือนแชร์ไลฟ์สด")
-        self.reader.bind_checkbox_announcement(self.chk_vip, "อ่านแจ้งเตือนสมัครสมาชิกช่อง")
-        self.reader.bind_checkbox_announcement(self.chk_emoji, "แปลอีโมจิและเครื่องหมายสัญลักษณ์")
-
+ 
+        self.reader.bind_checkbox_announcement(self.chk_comment, tr("CHK_COMMENT"))
+        self.reader.bind_checkbox_announcement(self.chk_join, tr("CHK_JOIN"))
+        self.reader.bind_checkbox_announcement(self.chk_gift, tr("CHK_GIFT"))
+        self.reader.bind_checkbox_announcement(self.chk_like, tr("CHK_LIKE"))
+        self.reader.bind_checkbox_announcement(self.chk_share, tr("CHK_SHARE"))
+        self.reader.bind_checkbox_announcement(self.chk_vip, tr("CHK_VIP"))
+        self.reader.bind_checkbox_announcement(self.chk_emoji, tr("CHK_EMOJI"))
+ 
         for chk in (self.chk_comment, self.chk_join, self.chk_gift, self.chk_like, self.chk_share, self.chk_vip, self.chk_emoji):
             vbox.Add(chk, 0, wx.ALL, 5)
-
-        vbox.Add(wx.StaticText(self.tab_reading, label="คำที่ห้ามอ่านออกเสียง (คั่นด้วยเครื่องหมายจุลภาค ,):"), 0, wx.ALL, 5)
+ 
+        vbox.Add(wx.StaticText(self.tab_reading, label=tr("LBL_BLACKLIST", "คำที่ห้ามอ่านออกเสียง (คั่นด้วยเครื่องหมายจุลภาค ,):")), 0, wx.ALL, 5)
         blacklist_list = cfg.get("blacklist", [])
         self.txt_blacklist = wx.TextCtrl(self.tab_reading, value=",".join(blacklist_list))
-        self.reader.bind_textctrl_announcement(self.txt_blacklist, "คำกรองแบล็กลิสต์คำห้ามพูด")
+        self.reader.bind_textctrl_announcement(self.txt_blacklist, tr("FOCUS_BLACKLIST", "คำกรองแบล็กลิสต์คำห้ามพูด"))
         vbox.Add(self.txt_blacklist, 0, wx.ALL | wx.EXPAND, 5)
-
+ 
         self.tab_reading.SetSizer(vbox)
 
     def _init_tts_tab(self):
@@ -117,7 +126,7 @@ class SettingsDialog(wx.Dialog):
         cfg = self.config_data.get("TTS", {})
         
         # 1. การเลือกเอนจินหลัก
-        vbox.Add(wx.StaticText(self.tab_tts, label="เลือกตัวอ่านเสียงหลัก (TTS Engine):"), 0, wx.ALL, 5)
+        vbox.Add(wx.StaticText(self.tab_tts, label=tr("LBL_TTS_MODE")), 0, wx.ALL, 5)
         self.choice_engine = wx.Choice(self.tab_tts, choices=[
             "NVDA Screen Reader", 
             "JAWS Screen Reader",
@@ -131,11 +140,11 @@ class SettingsDialog(wx.Dialog):
         engine_map = {"nvda": 0, "jaws": 1, "sapi5": 2, "onecore": 3, "google": 4, "edge": 5}
         self.choice_engine.SetSelection(engine_map.get(engine_mode, 0))
         self.choice_engine.Bind(wx.EVT_CHOICE, self._on_engine_change)
-        self.reader.bind_choice_announcement(self.choice_engine, "เลือกเครื่องมืออ่านเสียง")
+        self.reader.bind_choice_announcement(self.choice_engine, tr("LBL_TTS_MODE"))
         vbox.Add(self.choice_engine, 0, wx.EXPAND | wx.ALL, 5)
 
         # 2. รายชื่อเสียงพูดที่มีในระบบ
-        vbox.Add(wx.StaticText(self.tab_tts, label="เสียงพูดที่ต้องการในระบบ (Voice Selected):"), 0, wx.ALL, 5)
+        vbox.Add(wx.StaticText(self.tab_tts, label=tr("LBL_VOICE_SELECT")), 0, wx.ALL, 5)
         
         from tts.tts_engine import TTSEngine
         temp_engine = TTSEngine()
@@ -143,7 +152,7 @@ class SettingsDialog(wx.Dialog):
         
         voice_choices = [v["name"] for v in self.available_voices]
         self.choice_voice = wx.Choice(self.tab_tts, choices=voice_choices)
-        self.reader.bind_choice_announcement(self.choice_voice, "เลือกเสียงนักอ่าน")
+        self.reader.bind_choice_announcement(self.choice_voice, tr("LBL_VOICE_SELECT"))
         
         saved_voice_id = cfg.get("voice_id", "")
         # ค้นหา index จาก ID
@@ -157,30 +166,30 @@ class SettingsDialog(wx.Dialog):
 
         # 3. แถบความเร็ว
         speed_val = cfg.get("speed", 0)
-        self.lbl_speed = wx.StaticText(self.tab_tts, label=f"ความเร็วการอ่านเสียง (Speed): {speed_val}")
+        self.lbl_speed = wx.StaticText(self.tab_tts, label=f"{tr('LBL_TTS_SPEED')}: {speed_val}")
         self.sld_speed = wx.Slider(self.tab_tts, value=speed_val, minValue=-10, maxValue=10, style=wx.SL_HORIZONTAL)
-        self.reader.bind_slider_announcement(self.sld_speed, "ความเร็วการอ่านเสียง")
-        self.sld_speed.Bind(wx.EVT_SLIDER, lambda e: self.lbl_speed.SetLabel(f"ความเร็วการอ่านเสียง (Speed): {self.sld_speed.GetValue()}"))
+        self.reader.bind_slider_announcement(self.sld_speed, tr("LBL_TTS_SPEED"))
+        self.sld_speed.Bind(wx.EVT_SLIDER, lambda e: self.lbl_speed.SetLabel(f"{tr('LBL_TTS_SPEED')}: {self.sld_speed.GetValue()}"))
         vbox.Add(self.lbl_speed, 0, wx.ALL, 5)
         vbox.Add(self.sld_speed, 0, wx.EXPAND | wx.ALL, 5)
 
         # 4. โหมดเสียงสังเคราะห์ตลก
-        vbox.Add(wx.StaticText(self.tab_tts, label="รูปแบบเสียงสังเคราะห์ตลก (Funny TTS Style):"), 0, wx.ALL, 5)
+        vbox.Add(wx.StaticText(self.tab_tts, label=tr("LBL_FUNNY_STYLE")), 0, wx.ALL, 5)
         self.choice_funny_style = wx.Choice(self.tab_tts, choices=[
-            "ปกติ (Normal)", "หุ่นยนต์ (Robot)", "เด็ก (Child)", "คนแก่ (Old)", "พูดเร็ว (Fast)", "พูดช้า (Slow)", "ตลกสูง (Funny)"
+            tr("STYLE_NORMAL"), tr("STYLE_ROBOT"), tr("STYLE_CHILD"), tr("STYLE_OLD"), tr("STYLE_FAST"), tr("STYLE_SLOW"), "Funny"
         ])
         funny_style = cfg.get("funny_style", "normal")
         funny_map = {"normal": 0, "robot": 1, "child": 2, "old": 3, "fast": 4, "slow": 5, "funny": 6}
         self.choice_funny_style.SetSelection(funny_map.get(funny_style, 0))
-        self.reader.bind_choice_announcement(self.choice_funny_style, "เลือกรูปแบบความเพี้ยนเสียงตลก")
+        self.reader.bind_choice_announcement(self.choice_funny_style, tr("LBL_FUNNY_STYLE"))
         vbox.Add(self.choice_funny_style, 0, wx.EXPAND | wx.ALL, 5)
 
         # 5. ความดังเสียงพูดรวม
         vol_val = int(cfg.get("volume", 1.0) * 100)
-        self.lbl_vol = wx.StaticText(self.tab_tts, label=f"ความดังระดับเสียงพูด (Volume Boost): {vol_val}%")
+        self.lbl_vol = wx.StaticText(self.tab_tts, label=f"{tr('LBL_TTS_VOLUME')}: {vol_val}%")
         self.sld_vol = wx.Slider(self.tab_tts, value=vol_val, minValue=0, maxValue=150, style=wx.SL_HORIZONTAL)
-        self.reader.bind_slider_announcement(self.sld_vol, "ความดังระดับเสียงพูด", "เปอร์เซ็นต์")
-        self.sld_vol.Bind(wx.EVT_SLIDER, lambda e: self.lbl_vol.SetLabel(f"ความดังระดับเสียงพูด (Volume Boost): {self.sld_vol.GetValue()}%"))
+        self.reader.bind_slider_announcement(self.sld_vol, tr("LBL_TTS_VOLUME"), "%")
+        self.sld_vol.Bind(wx.EVT_SLIDER, lambda e: self.lbl_vol.SetLabel(f"{tr('LBL_TTS_VOLUME')}: {self.sld_vol.GetValue()}%"))
         vbox.Add(self.lbl_vol, 0, wx.ALL, 5)
         vbox.Add(self.sld_vol, 0, wx.EXPAND | wx.ALL, 5)
 
@@ -381,6 +390,9 @@ class SettingsDialog(wx.Dialog):
 
     def _on_save_click(self, event: wx.Event):
         # 1. แท็บการอ่านข้อมูล
+        lang_idx = self.choice_lang.GetSelection()
+        self.config_data["Settings"]["language"] = "th" if lang_idx == 0 else "en"
+        
         self.config_data["Settings"]["read_comment"] = self.chk_comment.GetValue()
         self.config_data["Settings"]["read_join"] = self.chk_join.GetValue()
         self.config_data["Settings"]["read_gift"] = self.chk_gift.GetValue()
@@ -431,4 +443,4 @@ class SettingsDialog(wx.Dialog):
                 json.dump(self.config_data, f, indent=2, ensure_ascii=False)
             self.EndModal(wx.ID_OK)
         except Exception as e:
-            wx.MessageBox(f"ไม่สามารถบันทึกการตั้งค่าลงเครื่องได้: {e}", "ข้อผิดพลาด", wx.ICON_ERROR)
+            wx.MessageBox(f"{tr('ERR_SAVE_CONFIG', 'ไม่สามารถบันทึกการตั้งค่าลงเครื่องได้')}: {e}", tr("TITLE_ERROR", "ข้อผิดพลาด"), wx.ICON_ERROR)

@@ -1,8 +1,11 @@
 import wx
 import os
+import json
 from typing import Dict, Any, List
 from services.music_service import MusicService
 from accessibility.reader_helper import ReaderHelper
+
+from core.i18n import tr
 
 class MusicWindow(wx.Frame):
     """
@@ -10,11 +13,14 @@ class MusicWindow(wx.Frame):
     การเข้าถึงออกแบบตามหลักอารยะสากลสำหรับตัวอ่านหน้าจอ
     """
     def __init__(self, parent: wx.Window, music_service: MusicService, speak_fn: Any, config_path: str):
-        super().__init__(parent, title="เครื่องเล่นเพลงและคิวขอเพลงสตรีมเมอร์", size=(650, 700))
+        super().__init__(parent, title=tr("TITLE_MUSIC", "เครื่องเล่นเพลงและคิวขอเพลงสตรีมเมอร์"), size=(650, 700))
         self.music = music_service
         self.speak_fn = speak_fn
         self.config_path = config_path
         self.reader = ReaderHelper(speak_fn)
+        
+        from core.i18n import get_language
+        lang = get_language()
         
         self.panel = wx.Panel(self)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
@@ -33,79 +39,101 @@ class MusicWindow(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self._on_close)
         
         # ประกาศเมื่อหน้าจอโผล่
-        self.reader.announce_navigation("เปิดหน้าต่างเครื่องเล่นเพลงและคิวขอเพลงแล้วค่ะ", 8)
+        self.reader.announce_navigation("Music player and request queue window opened." if lang == "en" else "เปิดหน้าต่างเครื่องเล่นเพลงและคิวขอเพลงแล้วค่ะ", 8)
 
     def _init_controls(self):
+        from core.i18n import get_language
+        lang = get_language()
+        
         # 1. การควบคุมเล่นเพลง
-        self.btn_play = wx.Button(self.panel, label="เล่น / พักเพลง (Ctrl+P)")
-        self.btn_stop = wx.Button(self.panel, label="หยุดเพลง")
-        self.btn_prev = wx.Button(self.panel, label="เพลงก่อนหน้า (Ctrl+B)")
-        self.btn_next = wx.Button(self.panel, label="เพลงถัดไป (Ctrl+N)")
+        play_label = "Play / Pause (Ctrl+P)" if lang == "en" else "เล่น / พักเพลง (Ctrl+P)"
+        stop_label = "Stop" if lang == "en" else "หยุดเพลง"
+        prev_label = "Previous Song (Ctrl+B)" if lang == "en" else "เพลงก่อนหน้า (Ctrl+B)"
+        next_label = "Next Song (Ctrl+N)" if lang == "en" else "เพลงถัดไป (Ctrl+N)"
+        
+        self.btn_play = wx.Button(self.panel, label=play_label)
+        self.btn_stop = wx.Button(self.panel, label=stop_label)
+        self.btn_prev = wx.Button(self.panel, label=prev_label)
+        self.btn_next = wx.Button(self.panel, label=next_label)
         
         self.btn_play.Bind(wx.EVT_BUTTON, self._on_play_click)
         self.btn_stop.Bind(wx.EVT_BUTTON, self._on_stop_click)
         self.btn_prev.Bind(wx.EVT_BUTTON, self._on_prev_click)
         self.btn_next.Bind(wx.EVT_BUTTON, self._on_next_click)
 
-        self.reader.bind_focus_announcement(self.btn_play, "ปุ่มเล่นหรือพักเพลงชั่วคราว คอนโทรลบวกพี")
-        self.reader.bind_focus_announcement(self.btn_stop, "ปุ่มหยุดเครื่องเล่นเพลง")
-        self.reader.bind_focus_announcement(self.btn_prev, "ปุ่มข้ามไปเล่นเพลงก่อนหน้า คอนโทรลบวกบี")
-        self.reader.bind_focus_announcement(self.btn_next, "ปุ่มข้ามไปเล่นเพลงถัดไป คอนโทรลบวกเอ็น")
+        if lang == "en":
+            self.reader.bind_focus_announcement(self.btn_play, "Play or pause song button, Control P")
+            self.reader.bind_focus_announcement(self.btn_stop, "Stop music player button")
+            self.reader.bind_focus_announcement(self.btn_prev, "Skip to previous song button, Control B")
+            self.reader.bind_focus_announcement(self.btn_next, "Skip to next song button, Control N")
+        else:
+            self.reader.bind_focus_announcement(self.btn_play, "ปุ่มเล่นหรือพักเพลงชั่วคราว คอนโทรลบวกพี")
+            self.reader.bind_focus_announcement(self.btn_stop, "ปุ่มหยุดเครื่องเล่นเพลง")
+            self.reader.bind_focus_announcement(self.btn_prev, "ปุ่มข้ามไปเล่นเพลงก่อนหน้า คอนโทรลบวกบี")
+            self.reader.bind_focus_announcement(self.btn_next, "ปุ่มข้ามไปเล่นเพลงถัดไป คอนโทรลบวกเอ็น")
 
         # 2. ปรับความดังเพลง
-        self.lbl_volume = wx.StaticText(self.panel, label=f"ความดังเพลง: {int(self.music.channel_volume * 100)}%")
+        vol_label = f"Music Volume: {int(self.music.channel_volume * 100)}%" if lang == "en" else f"ความดังเพลง: {int(self.music.channel_volume * 100)}%"
+        self.lbl_volume = wx.StaticText(self.panel, label=vol_label)
         self.sld_volume = wx.Slider(self.panel, value=int(self.music.channel_volume * 100), minValue=0, maxValue=100, style=wx.SL_HORIZONTAL)
         self.sld_volume.Bind(wx.EVT_SLIDER, self._on_volume_scroll)
-        self.reader.bind_slider_announcement(self.sld_volume, "ระดับเสียงเพลง", "เปอร์เซ็นต์")
+        
+        if lang == "en":
+            self.reader.bind_slider_announcement(self.sld_volume, "Music volume", "percent")
+        else:
+            self.reader.bind_slider_announcement(self.sld_volume, "ระดับเสียงเพลง", "เปอร์เซ็นต์")
 
         # โหมดการสุ่ม/วนซ้ำ (ย้ายขึ้นมาเพื่อปรับระดับ Tab Order ให้ตรงกับ Visual Layout)
-        self.chk_shuffle = wx.CheckBox(self.panel, label="เล่นเพลงแบบสุ่ม (Shuffle)")
+        self.chk_shuffle = wx.CheckBox(self.panel, label="Play random tracks (Shuffle)" if lang == "en" else "เล่นเพลงแบบสุ่ม (Shuffle)")
         self.chk_shuffle.SetValue(self.music.shuffle)
         self.chk_shuffle.Bind(wx.EVT_CHECKBOX, self._on_shuffle_toggle)
-        self.reader.bind_checkbox_announcement(self.chk_shuffle, "สลับการเล่นสุ่มเพลง")
+        self.reader.bind_checkbox_announcement(self.chk_shuffle, "Toggle random play" if lang == "en" else "สลับการเล่นสุ่มเพลง")
 
         # 3. เลือกเพลย์ลิสต์ และปุ่มสร้าง/ลบเพลย์ลิสต์
         self.choice_playlists = wx.Choice(self.panel, choices=[])
         self.choice_playlists.Bind(wx.EVT_CHOICE, self._on_playlist_select)
-        self.reader.bind_choice_announcement(self.choice_playlists, "เลือกกลุ่มเพลย์ลิสต์ประวัติเพลง")
+        self.reader.bind_choice_announcement(self.choice_playlists, "Select playlist category" if lang == "en" else "เลือกกลุ่มเพลย์ลิสต์ประวัติเพลง")
         
-        self.btn_add_playlist = wx.Button(self.panel, label="สร้างเพลย์ลิสต์")
-        self.btn_del_playlist = wx.Button(self.panel, label="ลบเพลย์ลิสต์")
+        self.btn_add_playlist = wx.Button(self.panel, label="Create Playlist" if lang == "en" else "สร้างเพลย์ลิสต์")
+        self.btn_del_playlist = wx.Button(self.panel, label="Delete Playlist" if lang == "en" else "ลบเพลย์ลิสต์")
         self.btn_add_playlist.Bind(wx.EVT_BUTTON, self._on_add_playlist_click)
         self.btn_del_playlist.Bind(wx.EVT_BUTTON, self._on_del_playlist_click)
-        self.reader.bind_focus_announcement(self.btn_add_playlist, "ปุ่มสร้างกลุ่มเพลงสะสมใหม่")
-        self.reader.bind_focus_announcement(self.btn_del_playlist, "ปุ่มลบกลุ่มเพลงสะสมปัจจุบัน")
+        self.reader.bind_focus_announcement(self.btn_add_playlist, "Create new playlist button" if lang == "en" else "ปุ่มสร้างกลุ่มเพลงสะสมใหม่")
+        self.reader.bind_focus_announcement(self.btn_del_playlist, "Delete current playlist button" if lang == "en" else "ปุ่มลบกลุ่มเพลงสะสมปัจจุบัน")
 
         # 4. รายการเพลงในเพลย์ลิสต์ และปุ่มจัดการไฟล์เพลง
         self.list_songs = wx.ListBox(self.panel, style=wx.LB_SINGLE)
         self.list_songs.Bind(wx.EVT_LISTBOX_DCLICK, self._on_song_double_click)
-        self.reader.bind_focus_announcement(self.list_songs, "รายการชื่อเพลงในเพลย์ลิสต์ปัจจุบัน ดับเบิ้ลคลิกหรือกดเอนเทอร์เพื่อเล่น")
+        self.reader.bind_focus_announcement(self.list_songs, "List of songs in current playlist. Double click or press Enter to play." if lang == "en" else "รายการชื่อเพลงในเพลย์ลิสต์ปัจจุบัน ดับเบิ้ลคลิกหรือกดเอนเทอร์เพื่อเล่น")
         
-        self.btn_add_songs = wx.Button(self.panel, label="เพิ่มเพลง (+)")
-        self.btn_del_song = wx.Button(self.panel, label="ลบเพลง (-)")
+        self.btn_add_songs = wx.Button(self.panel, label="Add Songs (+)" if lang == "en" else "เพิ่มเพลง (+)")
+        self.btn_del_song = wx.Button(self.panel, label="Delete Song (-)" if lang == "en" else "ลบเพลง (-)")
         self.btn_add_songs.Bind(wx.EVT_BUTTON, self._on_add_songs_click)
         self.btn_del_song.Bind(wx.EVT_BUTTON, self._on_del_song_click)
-        self.reader.bind_focus_announcement(self.btn_add_songs, "ปุ่มเพิ่มไฟล์เพลงจากคอมพิวเตอร์เข้าเพลย์ลิสต์ที่เลือก")
-        self.reader.bind_focus_announcement(self.btn_del_song, "ปุ่มลบเพลงที่เลือกออกจากเพลย์ลิสต์")
+        self.reader.bind_focus_announcement(self.btn_add_songs, "Add music files from computer to selected playlist button" if lang == "en" else "ปุ่มเพิ่มไฟล์เพลงจากคอมพิวเตอร์เข้าเพลย์ลิสต์ที่เลือก")
+        self.reader.bind_focus_announcement(self.btn_del_song, "Delete selected song from playlist button" if lang == "en" else "ปุ่มลบเพลงที่เลือกออกจากเพลย์ลิสต์")
 
         # 5. คิวเพลงที่ขอเข้ามาจากคนดูแชท
         self.list_requests = wx.ListBox(self.panel, style=wx.LB_SINGLE)
-        self.reader.bind_focus_announcement(self.list_requests, "รายการแสดงคิวจองขอเพลงจากผู้ชมไลฟ์สด")
+        self.reader.bind_focus_announcement(self.list_requests, "List of song requests from viewers." if lang == "en" else "รายการแสดงคิวจองขอเพลงจากผู้ชมไลฟ์สด")
 
         # 6. ปุ่มควบคุมคิวขอเพลง
-        self.btn_approve = wx.Button(self.panel, label="อนุมัติเพลง (Ctrl+Shift+Y)")
-        self.btn_reject = wx.Button(self.panel, label="ปฏิเสธเพลง (Ctrl+Shift+R)")
-        self.btn_skip_req = wx.Button(self.panel, label="ข้ามเพลงจอง")
+        self.btn_approve = wx.Button(self.panel, label="Approve Song (Ctrl+Shift+Y)" if lang == "en" else "อนุมัติเพลง (Ctrl+Shift+Y)")
+        self.btn_reject = wx.Button(self.panel, label="Reject Song (Ctrl+Shift+R)" if lang == "en" else "ปฏิเสธเพลง (Ctrl+Shift+R)")
+        self.btn_skip_req = wx.Button(self.panel, label="Skip Requested Song" if lang == "en" else "ข้ามเพลงจอง")
         
         self.btn_approve.Bind(wx.EVT_BUTTON, self._on_approve_click)
         self.btn_reject.Bind(wx.EVT_BUTTON, self._on_reject_click)
         self.btn_skip_req.Bind(wx.EVT_BUTTON, self._on_skip_req_click)
 
-        self.reader.bind_focus_announcement(self.btn_approve, "ปุ่มอนุมัติเพลงจองแชท คอนโทรลบวกชิฟต์บวกวาย")
-        self.reader.bind_focus_announcement(self.btn_reject, "ปุ่มปฏิเสธแบนเพลงจองแชท คอนโทรลบวกชิฟต์บวกราร์")
-        self.reader.bind_focus_announcement(self.btn_skip_req, "ปุ่มลัดข้ามเพลงคำขอปัจจุบัน")
+        self.reader.bind_focus_announcement(self.btn_approve, "Approve requested song button. Control Shift Y" if lang == "en" else "ปุ่มอนุมัติเพลงจองแชท คอนโทรลบวกชิฟต์บวกวาย")
+        self.reader.bind_focus_announcement(self.btn_reject, "Reject requested song button. Control Shift R" if lang == "en" else "ปุ่มปฏิเสธแบนเพลงจองแชท คอนโทรลบวกชิฟต์บวกราร์")
+        self.reader.bind_focus_announcement(self.btn_skip_req, "Skip current requested song button" if lang == "en" else "ปุ่มลัดข้ามเพลงคำขอปัจจุบัน")
 
     def _apply_layout(self):
+        from core.i18n import get_language
+        lang = get_language()
+        
         # จัดปุ่มควบคุมหลัก
         hbox_buttons = wx.BoxSizer(wx.HORIZONTAL)
         hbox_buttons.Add(self.btn_prev, 1, wx.ALL | wx.EXPAND, 3)
@@ -122,7 +150,7 @@ class MusicWindow(wx.Frame):
         self.vbox.Add(hbox_settings, 0, wx.EXPAND | wx.ALL, 5)
 
         # เพลย์ลิสต์
-        self.vbox.Add(wx.StaticText(self.panel, label="เลือกกลุ่มเพลย์ลิสต์สะสม:"), 0, wx.ALL, 3)
+        self.vbox.Add(wx.StaticText(self.panel, label="Select Playlist:" if lang == "en" else "เลือกกลุ่มเพลย์ลิสต์สะสม:"), 0, wx.ALL, 3)
         hbox_playlist = wx.BoxSizer(wx.HORIZONTAL)
         hbox_playlist.Add(self.choice_playlists, 1, wx.ALL | wx.EXPAND, 3)
         hbox_playlist.Add(self.btn_add_playlist, 0, wx.ALL | wx.EXPAND, 3)
@@ -130,7 +158,7 @@ class MusicWindow(wx.Frame):
         self.vbox.Add(hbox_playlist, 0, wx.EXPAND | wx.ALL, 5)
 
         # รายชื่อเพลง
-        self.vbox.Add(wx.StaticText(self.panel, label="เพลงที่มีทั้งหมดในเพลย์ลิสต์ที่เลือก:"), 0, wx.ALL, 3)
+        self.vbox.Add(wx.StaticText(self.panel, label="All tracks in selected playlist:" if lang == "en" else "เพลงที่มีทั้งหมดในเพลย์ลิสต์ที่เลือก:"), 0, wx.ALL, 3)
         self.vbox.Add(self.list_songs, 1, wx.EXPAND | wx.ALL, 5)
         
         # จัดการไฟล์เพลง
@@ -140,7 +168,7 @@ class MusicWindow(wx.Frame):
         self.vbox.Add(hbox_song_files, 0, wx.EXPAND | wx.ALL, 5)
 
         # คิวขอเพลง
-        self.vbox.Add(wx.StaticText(self.panel, label="รายการคิวที่ผู้ชมจองเพลงเข้ามาสด (!เพลง):"), 0, wx.ALL, 3)
+        self.vbox.Add(wx.StaticText(self.panel, label="Viewer requested songs queue (!song):" if lang == "en" else "รายการคิวที่ผู้ชมจองเพลงเข้ามาสด (!เพลง):"), 0, wx.ALL, 3)
         self.vbox.Add(self.list_requests, 1, wx.EXPAND | wx.ALL, 5)
 
         # ปุ่มจัดการคิว
@@ -164,21 +192,28 @@ class MusicWindow(wx.Frame):
 
     def _update_song_list(self):
         """อัปเดตข้อมูลรายการชื่อเพลงลง ListBox"""
+        from core.i18n import get_language
+        lang = get_language()
         tracks = self.music.playlists.get(self.music.current_playlist_name, [])
         song_names = [os.path.basename(t) for t in tracks]
         if not song_names:
-            song_names = ["(ไม่พบไฟล์เพลงในเพลย์ลิสต์นี้)"]
+            song_names = ["(No music files found in this playlist)" if lang == "en" else "(ไม่พบไฟล์เพลงในเพลย์ลิสต์นี้)"]
         self.list_songs.Set(song_names)
 
     def _update_request_list(self):
         """ดึงคิวข้อเสนอเพลงแชทมาแสดง"""
+        from core.i18n import get_language
+        lang = get_language()
         pending = self.music.get_pending_requests()
         items = []
         for r in pending:
-            items.append(f"รหัส {r['id']}: เพลง {r['song']} (ขอโดย {r['user']})")
+            if lang == "en":
+                items.append(f"ID {r['id']}: Song {r['song']} (Requested by {r['user']})")
+            else:
+                items.append(f"รหัส {r['id']}: เพลง {r['song']} (ขอโดย {r['user']})")
         
         if not items:
-            items = ["(ยังไม่มีคิวขอเพลงค้างอยู่ในระบบ)"]
+            items = ["(No pending song requests in the queue)" if lang == "en" else "(ยังไม่มีคิวขอเพลงค้างอยู่ในระบบ)"]
         self.list_requests.Set(items)
 
     # --- เหตุการณ์ Callback ---
@@ -203,16 +238,26 @@ class MusicWindow(wx.Frame):
             self.list_songs.SetSelection(self.music.current_song_idx)
 
     def _on_volume_scroll(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         val = self.sld_volume.GetValue()
-        self.lbl_volume.SetLabel(f"ความดังเพลง: {val}%")
+        if lang == "en":
+            self.lbl_volume.SetLabel(f"Music Volume: {val}%")
+        else:
+            self.lbl_volume.SetLabel(f"ความดังเพลง: {val}%")
         self.music.set_volume(val / 100.0)
 
     def _on_playlist_select(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         name = self.choice_playlists.GetStringSelection()
         self.music.current_playlist_name = name
         self.music.current_song_idx = 0
         self._update_song_list()
-        self.reader.announce_text(f"เปลี่ยนกลุ่มเพลย์ลิสต์สตรีมเป็น {name} สำเร็จค่ะ", 8)
+        if lang == "en":
+            self.reader.announce_text(f"Changed playlist to {name} successfully.", 8)
+        else:
+            self.reader.announce_text(f"เปลี่ยนกลุ่มเพลย์ลิสต์สตรีมเป็น {name} สำเร็จค่ะ", 8)
 
     def _on_song_double_click(self, event: wx.Event):
         idx = self.list_history_idx = self.list_songs.GetSelection()
@@ -222,28 +267,48 @@ class MusicWindow(wx.Frame):
             self.music.play_song()
 
     def _on_shuffle_toggle(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         self.music.shuffle = self.chk_shuffle.GetValue()
-        state = "สุ่มเพลงเปิดใช้งาน" if self.music.shuffle else "ปิดสุ่มเพลง"
+        if lang == "en":
+            state = "Shuffle enabled" if self.music.shuffle else "Shuffle disabled"
+        else:
+            state = "สุ่มเพลงเปิดใช้งาน" if self.music.shuffle else "ปิดสุ่มเพลง"
         self.reader.announce_text(state, 8)
 
     def _on_approve_click(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         req_id = self._get_selected_request_id()
         if req_id > 0:
             success, msg = self.music.approve_viewer_request(req_id)
             self._update_request_list()
         else:
-            self.reader.announce_text("กรุณาเลือกคิวจองขอเพลงในตารางล่างก่อนกดปุ่มค่ะ", 8)
+            if lang == "en":
+                self.reader.announce_text("Please select a song request from the list below first.", 8)
+            else:
+                self.reader.announce_text("กรุณาเลือกคิวจองขอเพลงในตารางล่างก่อนกดปุ่มค่ะ", 8)
 
     def _on_reject_click(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         req_id = self._get_selected_request_id()
         if req_id > 0:
             success, msg = self.music.reject_viewer_request(req_id)
             self._update_request_list()
         else:
-            self.reader.announce_text("กรุณาเลือกคิวจองขอเพลงในตารางล่างก่อนกดปุ่มค่ะ", 8)
+            if lang == "en":
+                self.reader.announce_text("Please select a song request from the list below first.", 8)
+            else:
+                self.reader.announce_text("กรุณาเลือกคิวจองขอเพลงในตารางล่างก่อนกดปุ่มค่ะ", 8)
 
     def _on_skip_req_click(self, event: wx.Event):
-        self.reader.announce_text("ข้ามเพลงจองสดในแชทปัจจุบันแล้วค่ะ", 8)
+        from core.i18n import get_language
+        lang = get_language()
+        if lang == "en":
+            self.reader.announce_text("Skipped current requested song.", 8)
+        else:
+            self.reader.announce_text("ข้ามเพลงจองสดในแชทปัจจุบันแล้วค่ะ", 8)
         self.music.next_track()
 
     def _get_selected_request_id(self) -> int:
@@ -266,7 +331,11 @@ class MusicWindow(wx.Frame):
                 self._update_song_selection()
 
     def _on_add_playlist_click(self, event: wx.Event):
-        dlg = wx.TextEntryDialog(self, "ระบุชื่อเพลย์ลิสต์ใหม่ที่ต้องการสร้าง:", "สร้างเพลย์ลิสต์ใหม่")
+        from core.i18n import get_language
+        lang = get_language()
+        prompt = "Enter name for the new playlist:" if lang == "en" else "ระบุชื่อเพลย์ลิสต์ใหม่ที่ต้องการสร้าง:"
+        title = "Create New Playlist" if lang == "en" else "สร้างเพลย์ลิสต์ใหม่"
+        dlg = wx.TextEntryDialog(self, prompt, title)
         if dlg.ShowModal() == wx.ID_OK:
             name = dlg.GetValue().strip()
             if name:
@@ -277,18 +346,31 @@ class MusicWindow(wx.Frame):
                     self.music.current_playlist_name = name
                     self.music.current_song_idx = 0
                     self._update_song_list()
-                    self.reader.announce_text(f"สร้างเพลย์ลิสต์ {name} สำเร็จและเลือกใช้งานแล้วค่ะ", 8)
+                    if lang == "en":
+                        self.reader.announce_text(f"Playlist {name} created and selected successfully.", 8)
+                    else:
+                        self.reader.announce_text(f"สร้างเพลย์ลิสต์ {name} สำเร็จและเลือกใช้งานแล้วค่ะ", 8)
                 else:
-                    self.reader.announce_text("ชื่อเพลย์ลิสต์นี้มีอยู่แล้วในระบบค่ะ", 8)
+                    if lang == "en":
+                        self.reader.announce_text("This playlist name already exists in the system.", 8)
+                    else:
+                        self.reader.announce_text("ชื่อเพลย์ลิสต์นี้มีอยู่แล้วในระบบค่ะ", 8)
         dlg.Destroy()
 
     def _on_del_playlist_click(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         name = self.choice_playlists.GetStringSelection()
-        if name == "เพลงสำหรับไลฟ์":
-            self.reader.announce_text("ไม่สามารถลบเพลย์ลิสต์หลัก เพลงสำหรับไลฟ์ ได้ค่ะ", 8)
+        if name in ("เพลงสำหรับไลฟ์", "Live Music"):
+            if lang == "en":
+                self.reader.announce_text("Cannot delete primary playlist.", 8)
+            else:
+                self.reader.announce_text("ไม่สามารถลบเพลย์ลิสต์หลัก เพลงสำหรับไลฟ์ ได้ค่ะ", 8)
             return
 
-        dlg = wx.MessageDialog(self, f"คุณแน่ใจหรือไม่ที่จะลบเพลย์ลิสต์ '{name}' และรายการเพลงทั้งหมดในนี้?", "ยืนยันการลบ", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING)
+        confirm_msg = f"Are you sure you want to delete playlist '{name}' and all its songs?" if lang == "en" else f"คุณแน่ใจหรือไม่ที่จะลบเพลย์ลิสต์ '{name}' และรายการเพลงทั้งหมดในนี้?"
+        confirm_title = "Confirm Delete" if lang == "en" else "ยืนยันการลบ"
+        dlg = wx.MessageDialog(self, confirm_msg, confirm_title, wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING)
         if dlg.ShowModal() == wx.ID_YES:
             self.music.delete_playlist(name)
             self._load_playlists_combo()
@@ -296,13 +378,19 @@ class MusicWindow(wx.Frame):
             self.choice_playlists.SetStringSelection("เพลงสำหรับไลฟ์")
             self.music.current_song_idx = 0
             self._update_song_list()
-            self.reader.announce_text(f"ลบเพลย์ลิสต์ {name} สำเร็จแล้วและสลับกลับสู่เพลย์ลิสต์เริ่มต้นค่ะ", 8)
+            if lang == "en":
+                self.reader.announce_text(f"Playlist {name} deleted successfully and switched to default playlist.", 8)
+            else:
+                self.reader.announce_text(f"ลบเพลย์ลิสต์ {name} สำเร็จแล้วและสลับกลับสู่เพลย์ลิสต์เริ่มต้นค่ะ", 8)
         dlg.Destroy()
 
     def _on_add_songs_click(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         playlist_name = self.choice_playlists.GetStringSelection()
+        prompt = "Select audio files to add to playlist" if lang == "en" else "เลือกไฟล์เพลงเพื่อเพิ่มเข้าเพลย์ลิสต์"
         dlg = wx.FileDialog(
-            self, message="เลือกไฟล์เพลงเพื่อเพิ่มเข้าเพลย์ลิสต์",
+            self, message=prompt,
             defaultFile="",
             wildcard="Audio files (*.mp3;*.wav;*.ogg)|*.mp3;*.wav;*.ogg",
             style=wx.FD_OPEN | wx.FD_MULTIPLE
@@ -312,13 +400,21 @@ class MusicWindow(wx.Frame):
             for p in paths:
                 self.music.add_track_to_playlist(playlist_name, p)
             self._update_song_list()
-            self.reader.announce_text(f"เพิ่มเพลง {len(paths)} เพลงเข้าสู่เพลย์ลิสต์เรียบร้อยแล้วค่ะ", 8)
+            if lang == "en":
+                self.reader.announce_text(f"Added {len(paths)} songs to playlist successfully.", 8)
+            else:
+                self.reader.announce_text(f"เพิ่มเพลง {len(paths)} เพลงเข้าสู่เพลย์ลิสต์เรียบร้อยแล้วค่ะ", 8)
         dlg.Destroy()
 
     def _on_del_song_click(self, event: wx.Event):
+        from core.i18n import get_language
+        lang = get_language()
         idx = self.list_songs.GetSelection()
         if idx == wx.NOT_FOUND:
-            self.reader.announce_text("กรุณาเลือกเพลงที่จะลบจากรายการก่อนค่ะ", 8)
+            if lang == "en":
+                self.reader.announce_text("Please select a song to delete from the list first.", 8)
+            else:
+                self.reader.announce_text("กรุณาเลือกเพลงที่จะลบจากรายการก่อนค่ะ", 8)
             return
 
         playlist_name = self.choice_playlists.GetStringSelection()
@@ -328,7 +424,11 @@ class MusicWindow(wx.Frame):
             tracks.pop(idx)
             self.music.save_all_playlists()
             self._update_song_list()
-            self.reader.announce_text(f"ลบเพลง {removed_song[:-4] if '.' in removed_song else removed_song} สำเร็จแล้วค่ะ", 8)
+            clean_name = removed_song[:-4] if '.' in removed_song else removed_song
+            if lang == "en":
+                self.reader.announce_text(f"Deleted song {clean_name} successfully.", 8)
+            else:
+                self.reader.announce_text(f"ลบเพลง {clean_name} สำเร็จแล้วค่ะ", 8)
 
     def _update_request_list_heartbeat(self):
         """เช็คเพื่อดึงค่าประวัติคำขอแชท (Heartbeat)"""

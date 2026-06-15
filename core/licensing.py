@@ -47,9 +47,11 @@ def verify_key(machine_id: str, activation_key: str) -> bool:
     except Exception:
         return False
 
+from core.i18n import tr
+
 class ActivationDialog(wx.Dialog):
     def __init__(self, parent, machine_id):
-        super().__init__(parent, title="การเปิดใช้งานโปรแกรม (Product Activation)", size=(500, 320))
+        super().__init__(parent, title=tr("TITLE_ACTIVATION", "การเปิดใช้งานโปรแกรม (Product Activation)"), size=(500, 320))
         self.machine_id = machine_id
         self.activation_successful = False
         
@@ -57,32 +59,32 @@ class ActivationDialog(wx.Dialog):
         self.Centre()
         
         # ประกาศเสียงพูดแจ้งเตือนเมื่อหน้าต่างเปิด
-        wx.CallAfter(speak_out, "โปรแกรมนี้ยังไม่ได้เปิดใช้งาน กรุณาคัดลอกรหัสประจำเครื่องส่งให้ผู้พัฒนาเพื่อรับรหัสเปิดใช้งานค่ะ")
+        wx.CallAfter(speak_out, tr("MSG_NOT_ACTIVATED", "โปรแกรมนี้ยังไม่ได้เปิดใช้งาน กรุณาคัดลอกรหัสประจำเครื่องส่งให้ผู้พัฒนาเพื่อรับรหัสเปิดใช้งานค่ะ"))
 
     def InitUI(self):
         panel = wx.Panel(self)
         vbox = wx.BoxSizer(wx.VERTICAL)
 
         # คำอธิบาย
-        lbl_info = wx.StaticText(panel, label="โปรแกรมยังไม่ได้เปิดใช้งาน กรุณาส่งรหัสประจำเครื่องให้ผู้พัฒนาเพื่อขอรหัสเปิดใช้งาน")
+        lbl_info = wx.StaticText(panel, label=tr("LBL_ACTIVATION_INFO", "โปรแกรมยังไม่ได้เปิดใช้งาน กรุณาส่งรหัสประจำเครื่องให้ผู้พัฒนาเพื่อขอรหัสเปิดใช้งาน"))
         vbox.Add(lbl_info, 0, wx.ALL | wx.EXPAND, 15)
 
         # รหัสประจำเครื่อง (Machine ID)
         hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_mid = wx.StaticText(panel, label="รหัสประจำเครื่อง:")
+        lbl_mid = wx.StaticText(panel, label=tr("LBL_MACHINE_ID", "รหัสประจำเครื่อง:"))
         hbox1.Add(lbl_mid, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 10)
         
         self.txt_mid = wx.TextCtrl(panel, value=self.machine_id, style=wx.TE_READONLY)
         hbox1.Add(self.txt_mid, 1, wx.EXPAND)
         
-        btn_copy = wx.Button(panel, label="คัดลอกรหัสประจำเครื่อง")
+        btn_copy = wx.Button(panel, label=tr("BTN_COPY_MID", "คัดลอกรหัสประจำเครื่อง"))
         btn_copy.Bind(wx.EVT_BUTTON, self.OnCopy)
         hbox1.Add(btn_copy, 0, wx.LEFT, 10)
         vbox.Add(hbox1, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 15)
 
         # ช่องใส่รหัสเปิดใช้งาน (Activation Key)
         vbox.AddSpacer(15)
-        lbl_key = wx.StaticText(panel, label="กรอกรหัสเปิดใช้งาน (Activation Key):")
+        lbl_key = wx.StaticText(panel, label=tr("LBL_ENTER_KEY", "กรอกรหัสเปิดใช้งาน (Activation Key):"))
         vbox.Add(lbl_key, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 15)
         
         self.txt_key = wx.TextCtrl(panel, style=wx.TE_MULTILINE, size=(-1, 60))
@@ -92,11 +94,11 @@ class ActivationDialog(wx.Dialog):
         vbox.AddSpacer(20)
         hbox2 = wx.BoxSizer(wx.HORIZONTAL)
         
-        btn_activate = wx.Button(panel, label="เปิดใช้งาน")
+        btn_activate = wx.Button(panel, label=tr("BTN_ACTIVATE", "เปิดใช้งาน"))
         btn_activate.Bind(wx.EVT_BUTTON, self.OnActivate)
         hbox2.Add(btn_activate, 0, wx.RIGHT, 15)
         
-        btn_exit = wx.Button(panel, label="ปิดโปรแกรม")
+        btn_exit = wx.Button(panel, label=tr("BTN_EXIT_APP", "ปิดโปรแกรม"))
         btn_exit.Bind(wx.EVT_BUTTON, self.OnExit)
         hbox2.Add(btn_exit, 0)
         
@@ -108,24 +110,24 @@ class ActivationDialog(wx.Dialog):
         if wx.TheClipboard.Open():
             wx.TheClipboard.SetData(wx.TextDataObject(self.machine_id))
             wx.TheClipboard.Close()
-            speak_out("คัดลอกรหัสประจำเครื่องลงคลิปบอร์ดแล้วค่ะ")
-            wx.MessageBox("คัดลอกรหัสประจำเครื่องลงคลิปบอร์ดเรียบร้อยแล้ว", "สำเร็จ", wx.OK | wx.ICON_INFORMATION)
-
+            speak_out(tr("MSG_COPIED_MID", "คัดลอกรหัสประจำเครื่องลงคลิปบอร์ดแล้วค่ะ"))
+            wx.MessageBox(tr("MSG_COPIED_SUCCESS", "คัดลอกรหัสประจำเครื่องลงคลิปบอร์ดเรียบร้อยแล้ว"), tr("TITLE_SUCCESS", "สำเร็จ"), wx.OK | wx.ICON_INFORMATION)
+ 
     def OnActivate(self, event):
         key = self.txt_key.GetValue().strip()
         if not key:
-            speak_out("กรุณากรอกรหัสเปิดใช้งานค่ะ")
-            wx.MessageBox("กรุณากรอกรหัสเปิดใช้งาน", "ข้อผิดพลาด", wx.OK | wx.ICON_WARNING)
+            speak_out(tr("MSG_ENTER_KEY", "กรุณากรอกรหัสเปิดใช้งานค่ะ"))
+            wx.MessageBox(tr("MSG_ENTER_KEY_ERR", "กรุณากรอกรหัสเปิดใช้งาน"), tr("TITLE_ERROR", "ข้อผิดพลาด"), wx.OK | wx.ICON_WARNING)
             return
-
+ 
         if verify_key(self.machine_id, key):
             self.activation_successful = True
-            speak_out("เปิดใช้งานโปรแกรมสำเร็จแล้วค่ะ ยินดีต้อนรับเข้าใช้งานค่ะ")
-            wx.MessageBox("เปิดใช้งานโปรแกรมสำเร็จแล้ว! ขอบคุณที่สนับสนุนครับ", "สำเร็จ", wx.OK | wx.ICON_INFORMATION)
+            speak_out(tr("MSG_ACTIVATE_SUCCESS", "เปิดใช้งานโปรแกรมสำเร็จแล้วค่ะ ยินดีต้อนรับเข้าใช้งานค่ะ"))
+            wx.MessageBox(tr("MSG_ACTIVATE_BOX", "เปิดใช้งานโปรแกรมสำเร็จแล้ว! ขอบคุณที่สนับสนุนครับ"), tr("TITLE_SUCCESS", "สำเร็จ"), wx.OK | wx.ICON_INFORMATION)
             self.EndModal(wx.ID_OK)
         else:
-            speak_out("รหัสเปิดใช้งานไม่ถูกต้อง กรุณาตรวจสอบรหัสหรือติดต่อผู้พัฒนาค่ะ")
-            wx.MessageBox("รหัสเปิดใช้งานไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง", "ข้อผิดพลาด", wx.OK | wx.ICON_ERROR)
+            speak_out(tr("MSG_ACTIVATE_FAILED", "รหัสเปิดใช้งานไม่ถูกต้อง กรุณาตรวจสอบรหัสหรือติดต่อผู้พัฒนาค่ะ"))
+            wx.MessageBox(tr("MSG_ACTIVATE_FAILED_BOX", "รหัสเปิดใช้งานไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"), tr("TITLE_ERROR", "ข้อผิดพลาด"), wx.OK | wx.ICON_ERROR)
 
     def OnExit(self, event):
         self.EndModal(wx.ID_CANCEL)
@@ -180,7 +182,11 @@ class LicenseManager:
                     json.dump(cfg, f, indent=4, ensure_ascii=False)
                 return True
             except Exception as e:
-                wx.MessageBox(f"เกิดข้อผิดพลาดในการบันทึกรหัสเปิดใช้งาน: {e}", "ข้อผิดพลาด", wx.OK | wx.ICON_ERROR)
+                from core.i18n import get_language
+                lang = get_language()
+                err_msg = f"Failed to save activation key: {e}" if lang == "en" else f"เกิดข้อผิดพลาดในการบันทึกรหัสเปิดใช้งาน: {e}"
+                err_title = tr("TITLE_ERROR", "ข้อผิดพลาด")
+                wx.MessageBox(err_msg, err_title, wx.OK | wx.ICON_ERROR)
                 return False
         
         return False
