@@ -10,7 +10,7 @@ class SettingsDialog(wx.Dialog):
     หน้าต่างตั้งค่าการทำงานของโปรแกรมหลัก (Settings Dialog)
     รองรับการควบคุมผ่านแป้นพิมพ์ 100% พร้อมตัวควบคุมมิกเซอร์เสียง (Mixer Volume) และ TTS ตลก
     """
-    def __init__(self, parent: wx.Window, config_path: str, speak_fn: Any):
+    def __init__(self, parent: wx.Window, config_path: str, speak_fn: Any, initial_tab: int = 0):
         super().__init__(parent, title=tr("TITLE_SETTINGS"), size=(600, 700))
         self.config_path = config_path
         self.speak_fn = speak_fn
@@ -63,6 +63,9 @@ class SettingsDialog(wx.Dialog):
         
         sizer.Add(btn_sizer, 0, wx.EXPAND | wx.ALL, 10)
         self.panel.SetSizer(sizer)
+        
+        # ตั้งค่าแท็บเริ่มต้น
+        self.notebook.SetSelection(initial_tab)
         
         # ตั้งค่าฟอนต์และการเข้าถึงระดับสูง
         self.apply_theme()

@@ -140,7 +140,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, lambda e: self._on_stop_connection(), item_disconn)
         self.Bind(wx.EVT_MENU, lambda e: self._on_open_stats_window(), item_view_stats)
         self.Bind(wx.EVT_MENU, lambda e: self._on_speak_leaderboard(), item_view_leader)
-        self.Bind(wx.EVT_MENU, lambda e: self._on_open_settings_voice(), item_set_voice)
+        self.Bind(wx.EVT_MENU, lambda e: self._on_open_settings_voice(1), item_set_voice)
         self.Bind(wx.EVT_MENU, lambda e: self._on_mute_triggered(), item_mute)
         
         self.Bind(wx.EVT_MENU, lambda e: self._on_toggle_blind_mode(), item_toggle_blind)
@@ -183,11 +183,11 @@ class MainWindow(wx.Frame):
         # 2. แถบปุ่มควบคุม
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.btn_toggle_conn = wx.Button(self.panel, label=tr("BTN_LABEL_CONNECT", "เริ่มการเชื่อมต่อไลฟ์สด"))
-        self.btn_open_settings = wx.Button(self.panel, label=tr("BTN_OPEN_SETTINGS", "ตั้งค่าเสียงโปรแกรม (F10)"))
+        self.btn_open_settings = wx.Button(self.panel, label=tr("BTN_OPEN_SETTINGS", "ตั้งค่าระบบหลักและภาษา (F10)"))
         self.btn_open_stats = wx.Button(self.panel, label=tr("BTN_OPEN_STATS", "ดูผลสถิติแชท (F8)"))
         
         self.btn_toggle_conn.Bind(wx.EVT_BUTTON, self._on_toggle_conn_click)
-        self.btn_open_settings.Bind(wx.EVT_BUTTON, lambda e: self._on_open_settings_voice())
+        self.btn_open_settings.Bind(wx.EVT_BUTTON, lambda e: self._on_open_settings_voice(0))
         self.btn_open_stats.Bind(wx.EVT_BUTTON, lambda e: self._on_open_stats_window())
         
         self.reader.bind_focus_announcement(self.btn_toggle_conn, tr("FOCUS_BTN_TOGGLE_CONN", "ปุ่มเริ่มและหยุดการเชื่อมต่อติ๊กต็อก"))
@@ -222,8 +222,8 @@ class MainWindow(wx.Frame):
             106: self._on_mute_triggered,            # F6
             107: self._on_speak_leaderboard,         # F7
             108: self._on_speak_statistics,          # F8
-            109: self._on_open_settings_voice,       # F9
-            110: self._on_open_settings_voice,       # F10 (ให้เปิดตั่งค่าหลัก)
+            109: lambda: self._on_open_settings_voice(1),       # F9 (ตั้งค่าเสียงอ่าน/การเข้าถึง)
+            110: lambda: self._on_open_settings_voice(0),       # F10 (ตั้งค่าระบบหลัก/การอ่านแชท)
             111: self._on_export_logs_click,         # F11
             112: self._on_speak_live_summary,        # F12
             113: self._on_streamer_ai_assistant_ask, # Ctrl+Shift+A
@@ -462,9 +462,9 @@ class MainWindow(wx.Frame):
             )
         self.audio.add_to_queue(text, 8)
 
-    def _on_open_settings_voice(self):
+    def _on_open_settings_voice(self, initial_tab: int = 1):
         """F9/F10: เปิดหน้าจอตั้งค่าตัวเลือกเสียง"""
-        dlg = SettingsDialog(self, self.config_path, self.audio.add_to_queue)
+        dlg = SettingsDialog(self, self.config_path, self.audio.add_to_queue, initial_tab)
         if dlg.ShowModal() == wx.ID_OK:
             self.audio.add_to_queue(tr("MSG_SAVE_RESTART"), 8)
             wx.MessageBox(tr("MSG_SAVE_RESTART"), tr("TITLE_SAVE"), wx.OK | wx.ICON_INFORMATION)
@@ -629,7 +629,7 @@ class MainWindow(wx.Frame):
             import requests
             try:
                 headers = {"User-Agent": "Mozilla/5.0"}
-                response = requests.get("https://is.gd/ttupdate", headers=headers, timeout=5)
+                response = requests.get("https://raw.githubusercontent.com/srawuthisribaw-ctrl/TikTokLiveReaderThai/main/version.txt", headers=headers, timeout=5)
                 latest_ver = response.text.strip()
                 wx.CallAfter(self._on_check_update_result, latest_ver, None)
             except Exception as e:

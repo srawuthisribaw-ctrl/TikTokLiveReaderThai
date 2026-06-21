@@ -6,8 +6,8 @@ import zipfile
 import subprocess
 import shutil
 
-UPDATE_URL = "https://is.gd/ttupdate"
-DOWNLOAD_EXE_URL = "https://github.com/ekarinyuri/TiktokUtilities/releases/latest/download/TiktokUtilities.exe"
+UPDATE_URL = "https://raw.githubusercontent.com/srawuthisribaw-ctrl/TikTokLiveReaderThai/main/version.txt"
+DOWNLOAD_EXE_URL = "https://github.com/srawuthisribaw-ctrl/TikTokLiveReaderThai/releases/latest/download/TikTokLiveReaderThai.exe"
 
 def run_update():
     """

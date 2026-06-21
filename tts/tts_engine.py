@@ -177,10 +177,9 @@ class TTSEngine:
         elif mode in ("sapi5", "onecore"):
             self._speak_sapi5(text, voice_id, speed, volume, funny_style)
 
-        # 4. โหมด Google TTS (ไม่มีโหมดตลก ทำได้แค่เล่นเสียงตามความดัง)
+        # 4. โหมด Google TTS (ปรับความเร็วช้าผ่านสไตล์ตลก)
         elif mode == "google":
-            # ปรับความเร็วตามตลกโดยการบวกความถี่ (จำลอง)
-            self._speak_google(text, volume)
+            self._speak_google(text, volume, funny_style)
 
         # 5. โหมด Edge TTS
         elif mode == "edge":
@@ -223,11 +222,26 @@ class TTSEngine:
                 except Exception as e:
                     print(f"Error setting voice token: {e}")
             
+            # ปรับแต่งความเร็วตามสไตล์ตลกเพิ่มเติมสำหรับเสียงระบบ (เช่น OneCore ที่ไม่รองรับ XML Pitch)
+            adjusted_speed = speed
+            if funny_style == "robot":
+                adjusted_speed -= 2
+            elif funny_style == "child":
+                adjusted_speed += 3
+            elif funny_style == "old":
+                adjusted_speed -= 3
+            elif funny_style == "fast":
+                adjusted_speed += 5
+            elif funny_style == "slow":
+                adjusted_speed -= 5
+            elif funny_style == "funny":
+                adjusted_speed += 4
+
             # ปรับแต่งความเร็วและความดังพื้นฐาน
-            self.speaker.Rate = max(-10, min(10, speed))
+            self.speaker.Rate = max(-10, min(10, adjusted_speed))
             self.speaker.Volume = int(max(0.0, min(1.0, volume)) * 100)
             
-            # ห่อหุ้ม XML ข้อความกรณีเลือกรูปแบบตลก
+            # ห่อหุ้ม XML ข้อความกรณีเลือกรูปแบบตลก (สำหรับ SAPI5 ดั้งเดิมที่รองรับ XML Pitch)
             processed_text = self.wrap_sapi_xml(text, funny_style)
             
             # สั่ง Speak (ใช้ Flag 9 เพื่อเปิดใช้งาน XML และรันแบบ Asynchronous)
@@ -243,10 +257,12 @@ class TTSEngine:
             print(f"SAPI5 Error: {e}")
             self.speaker = None
 
-    def _speak_google(self, text: str, volume: float):
+    def _speak_google(self, text: str, volume: float, funny_style: str = "normal"):
         temp_path = None
         try:
-            tts = gTTS(text, lang="th")
+            # ปรับความเร็วช้าจำลองสำหรับ Google TTS
+            is_slow = funny_style in ("slow", "robot", "old")
+            tts = gTTS(text, lang="th", slow=is_slow)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
                 temp_path = fp.name
             
