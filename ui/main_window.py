@@ -18,6 +18,8 @@ from ui.soundboard_window import SoundboardWindow
 from ui.radio_window import RadioWindow
 from core.i18n import tr
 
+APP_VERSION = "3.0.0"
+
 class MainWindow(wx.Frame):
     """
     หน้าต่างโปรแกรมหลัก (Main Window Frame)
@@ -217,7 +219,7 @@ class MainWindow(wx.Frame):
             103: self._on_stop_connection,           # F3
             104: lambda: self._on_toggle_read_setting("read_comment", "คอมเมนต์แชท", "chat comments"), # F4
             105: lambda: self._on_toggle_read_setting("read_join", "การเข้าห้อง", "join room alerts"),    # F5
-            106: lambda: self._on_toggle_read_setting("read_gift", "ของขวัญ", "gift alerts"),       # F6
+            106: self._on_mute_triggered,            # F6
             107: self._on_speak_leaderboard,         # F7
             108: self._on_speak_statistics,          # F8
             109: self._on_open_settings_voice,       # F9
@@ -243,7 +245,8 @@ class MainWindow(wx.Frame):
             127: lambda: self._on_play_sfx("lose"),       # Alt+F8
             128: self._on_play_random_sfx,                # Alt+F9
             129: self._on_open_soundboard_window,          # Alt+F10
-            130: self._on_open_radio_window                # Ctrl+Shift+R
+            130: self._on_open_radio_window,               # Ctrl+Shift+R
+            131: lambda: self._on_toggle_read_setting("read_gift", "ของขวัญ", "gift alerts") # Ctrl+Shift+G
         }
         self.hotkeys.register_all_hotkeys(callbacks)
 
@@ -613,14 +616,97 @@ class MainWindow(wx.Frame):
                 self.audio.add_to_queue(f"ไม่พบไฟล์คู่มือ {doc_name} ค่ะ", 8)
 
     def _on_check_update_action(self):
+        import threading
         from core.i18n import get_language
         lang = get_language()
+        
         if lang == "en":
             self.audio.add_to_queue("Checking the latest program version from primary server.", 8)
-            wx.MessageBox("Your current version 3.0.0 is the latest and most stable.", "System Update Successful", wx.ICON_INFORMATION)
         else:
             self.audio.add_to_queue("กำลังตรวจสอบรุ่นโปรแกรมล่าสุดกับเซิร์ฟเวอร์หลักค่ะ", 8)
-            wx.MessageBox("เวอร์ชันปัจจุบันของคุณ 3.0.0 เป็นรุ่นล่าสุดและเสถียรที่สุดแล้วค่ะ", "อัปเดตระบบสำเร็จ", wx.ICON_INFORMATION)
+            
+        def check_thread():
+            import requests
+            try:
+                headers = {"User-Agent": "Mozilla/5.0"}
+                response = requests.get("https://is.gd/ttupdate", headers=headers, timeout=5)
+                latest_ver = response.text.strip()
+                wx.CallAfter(self._on_check_update_result, latest_ver, None)
+            except Exception as e:
+                wx.CallAfter(self._on_check_update_result, None, str(e))
+                
+        t = threading.Thread(target=check_thread, daemon=True)
+        t.start()
+
+    def _on_check_update_result(self, latest_ver: str, error: str):
+        from core.i18n import get_language
+        lang = get_language()
+        
+        if error:
+            if lang == "en":
+                self.audio.add_to_queue("Failed to check for updates. Please try again later.", 8)
+                wx.MessageBox(f"Failed to connect to update server:\n{error}", "Update Error", wx.OK | wx.ICON_ERROR)
+            else:
+                self.audio.add_to_queue("ล้มเหลวในการตรวจสอบการอัปเดตค่ะ กรุณาลองใหม่อีกครั้งภายหลัง", 8)
+                wx.MessageBox(f"ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์อัปเดตได้ค่ะ:\n{error}", "ข้อผิดพลาดระบบ", wx.OK | wx.ICON_ERROR)
+            return
+
+        local_ver = APP_VERSION
+        
+        def parse_ver(v_str):
+            try:
+                return tuple(map(int, v_str.strip().split('.')))
+            except Exception:
+                return (0, 0, 0)
+                
+        if parse_ver(latest_ver) > parse_ver(local_ver):
+            if lang == "en":
+                self.audio.add_to_queue(f"New version {latest_ver} is available. Do you want to update now?", 8)
+                msg = f"New version {latest_ver} is available (Current: {local_ver}).\nDo you want to update now?\nThe program will close to install the update."
+                title = "Update Available"
+            else:
+                self.audio.add_to_queue(f"พบรุ่นใหม่ เวอร์ชัน {latest_ver} พร้อมใช้งานแล้วค่ะ คุณต้องการอัปเดตทันทีหรือไม่", 8)
+                msg = f"พบรุ่นปรับปรุงใหม่ เวอร์ชัน {latest_ver} พร้อมใช้งานแล้วค่ะ (เวอร์ชันปัจจุบัน: {local_ver})\nคุณต้องการดาวน์โหลดและติดตั้งตัวอัปเดตทันทีเลยหรือไม่?\n*โปรแกรมจะปิดตัวลงชั่วคราวเพื่อทำรายการค่ะ*"
+                title = "พบเวอร์ชันใหม่"
+                
+            dial = wx.MessageDialog(self, msg, title, wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+            if dial.ShowModal() == wx.ID_YES:
+                self._run_updater_program()
+        else:
+            if lang == "en":
+                self.audio.add_to_queue("Your program is up to date.", 8)
+                wx.MessageBox(f"Your current version {local_ver} is the latest and most stable.", "System Update Successful", wx.OK | wx.ICON_INFORMATION)
+            else:
+                self.audio.add_to_queue("โปรแกรมของคุณเป็นรุ่นล่าสุดและเสถียรที่สุดแล้วค่ะ", 8)
+                wx.MessageBox(f"เวอร์ชันปัจจุบันของคุณ {local_ver} เป็นรุ่นล่าสุดและเสถียรที่สุดแล้วค่ะ", "อัปเดตระบบสำเร็จ", wx.OK | wx.ICON_INFORMATION)
+
+    def _run_updater_program(self):
+        import subprocess
+        import sys
+        
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+            updater_exe = os.path.join(base_dir, "_internal", "updater.exe")
+            if not os.path.exists(updater_exe):
+                updater_exe = os.path.join(base_dir, "updater.exe")
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            updater_exe = os.path.join(base_dir, "updater.py")
+            
+        try:
+            if getattr(sys, 'frozen', False) and os.path.exists(updater_exe):
+                subprocess.Popen([updater_exe])
+            else:
+                subprocess.Popen([sys.executable, updater_exe])
+            
+            self.Close()
+        except Exception as e:
+            from core.i18n import get_language
+            lang = get_language()
+            if lang == "en":
+                wx.MessageBox(f"Failed to start updater: {e}", "Error", wx.OK | wx.ICON_ERROR)
+            else:
+                wx.MessageBox(f"ไม่สามารถเริ่มโปรแกรมอัปเดตได้ค่ะ: {e}", "ข้อผิดพลาด", wx.OK | wx.ICON_ERROR)
 
     def _on_show_about(self):
         from core.i18n import get_language
@@ -628,7 +714,7 @@ class MainWindow(wx.Frame):
         if lang == "en":
             msg = (
                 "TikTok Live Reader Thai Accessibility Edition\n"
-                "Version: 3.0.0\n"
+                f"Version: {APP_VERSION}\n"
                 "Developed by: sarawoot sribaw\n"
                 "Designed and developed for visually impaired 100%\n"
                 "Thank you to all project supporters.\n\n"
@@ -636,12 +722,12 @@ class MainWindow(wx.Frame):
                 "Email: srawuthisribaw@gmail.com\n"
                 "Facebook: sarawoot sribaw"
             )
-            self.audio.add_to_queue("Developer contact details: Email srawuthisribaw@gmail.com and Facebook sarawoot sribaw.", 8, channel="tts")
+            self.audio.add_to_queue(f"Developer contact details: Email srawuthisribaw@gmail.com and Facebook sarawoot sribaw. Version {APP_VERSION}.", 8, channel="tts")
             wx.MessageBox(msg, "About Developer & Contact Info", wx.ICON_INFORMATION)
         else:
             msg = (
                 "TikTok Live Reader Thai Accessibility Edition\n"
-                "เวอร์ชัน: 3.0.0\n"
+                f"เวอร์ชัน: {APP_VERSION}\n"
                 "พัฒนาโดย: sarawoot sribaw\n"
                 "ออกแบบและพัฒนาเพื่อผู้พิการทางสายตา 100%\n"
                 "ขอบคุณผู้ร่วมสนับสนุนโครงการทุกท่านค่ะ\n\n"
@@ -649,7 +735,7 @@ class MainWindow(wx.Frame):
                 "อีเมล (Email): srawuthisribaw@gmail.com\n"
                 "เฟซบุ๊ก (Facebook): sarawoot sribaw"
             )
-            self.audio.add_to_queue("ข้อมูลติดต่อนักพัฒนา อีเมล srawuthisribaw@gmail.com และ เฟซบุ๊ก sarawoot sribaw ค่ะ", 8, channel="tts")
+            self.audio.add_to_queue(f"ข้อมูลติดต่อนักพัฒนา อีเมล srawuthisribaw@gmail.com และ เฟซบุ๊ก sarawoot sribaw ค่ะ เวอร์ชัน {APP_VERSION}.", 8, channel="tts")
             wx.MessageBox(msg, "เกี่ยวกับผู้พัฒนาและข้อมูลการติดต่อ", wx.ICON_INFORMATION)
 
     # --- การเข้าถึง (Accessibility) ---

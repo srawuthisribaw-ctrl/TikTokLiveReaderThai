@@ -132,6 +132,7 @@ class AudioQueue:
     def mute(self):
         """เงียบเสียงพูดและเคลียร์คิวเสียงสะสมทั้งหมด"""
         self.muted = True
+        self.tts.muted = True
         while not self.queue.empty():
             try:
                 self.queue.get_nowait()

@@ -35,6 +35,7 @@ class TTSEngine:
         self.edge_loop = None
         self.edge_thread = None
         self._init_edge_thread()
+        self.muted = False
 
     def _init_nvda(self):
         """โหลดไลบรารี NVDA Controller DLL"""
@@ -154,6 +155,7 @@ class TTSEngine:
         สั่งให้อ่านออกเสียงข้อความตามระบบที่ระบุ
         funny_style: 'normal', 'robot', 'child', 'old', 'fast', 'slow', 'funny'
         """
+        self.muted = False
         if not text.strip():
             return
 
@@ -228,8 +230,15 @@ class TTSEngine:
             # ห่อหุ้ม XML ข้อความกรณีเลือกรูปแบบตลก
             processed_text = self.wrap_sapi_xml(text, funny_style)
             
-            # สั่ง Speak (Flag 0 คือดึง XML มาแปรค่าตามพารามิเตอร์)
-            self.speaker.Speak(processed_text, 0)
+            # สั่ง Speak (ใช้ Flag 9 เพื่อเปิดใช้งาน XML และรันแบบ Asynchronous)
+            # SVSFlagsAsync = 1, SVSFIsXML = 8
+            self.speaker.Speak(processed_text, 9)
+            
+            # วนลูปตรวจสอบสถานะการพูด โดยสามารถสั่งหยุดได้ทันทีเมื่อมีการกดคีย์ลัด Mute
+            while not self.speaker.WaitUntilDone(50):
+                if getattr(self, "muted", False):
+                    self.speaker.Speak("", 2)  # SVSFPurgeBeforeSpeak = 2
+                    break
         except Exception as e:
             print(f"SAPI5 Error: {e}")
             self.speaker = None
@@ -290,6 +299,9 @@ class TTSEngine:
                 sound.set_volume(max(0.0, min(1.0, volume)))
                 channel = sound.play()
                 while channel and channel.get_busy():
+                    if getattr(self, "muted", False):
+                        pygame.mixer.stop()
+                        break
                     pygame.time.wait(50)
                 del sound
             except Exception as sound_err:
@@ -299,6 +311,9 @@ class TTSEngine:
                 pygame.mixer.music.set_volume(max(0.0, min(1.0, volume)))
                 pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy():
+                    if getattr(self, "muted", False):
+                        pygame.mixer.music.stop()
+                        break
                     pygame.time.wait(50)
                 pygame.mixer.music.unload()
         except Exception as e:

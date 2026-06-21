@@ -45,7 +45,7 @@ def build_executable():
     ]
     
     try:
-        print(f"รันคำสั่งคอมไพล์: {' '.join(command)}")
+        print(f"รันคำสั่งคอมไพล์หลัก: {' '.join(command)}")
         subprocess.check_call(command)
         print("คอมไพล์โค้ดหลักเสร็จสิ้น!")
     except Exception as e:
@@ -53,10 +53,28 @@ def build_executable():
         print("กรุณาตรวจสอบว่าติดตั้ง pyinstaller แล้วผ่าน pip install pyinstaller")
         return False
 
+    # 1.5 รันคำสั่งคอมไพล์สำหรับ updater.py เป็น OneFile Console
+    updater_command = [
+        "pyinstaller",
+        "--console",
+        "--onefile",
+        "--name=updater",
+        "--clean",
+        "-y",
+        "--paths=.",
+        "updater.py"
+    ]
+    try:
+        print(f"รันคำสั่งคอมไพล์ Updater: {' '.join(updater_command)}")
+        subprocess.check_call(updater_command)
+        print("คอมไพล์ Updater เสร็จสิ้น!")
+    except Exception as e:
+        print(f"เกิดข้อผิดพลาดในการรัน PyInstaller สำหรับ Updater: {e}")
+        return False
+
     # 2. คัดลอกทรัพยากรไปวางที่โฟลเดอร์ dist/
     dist_dir = os.path.join("dist", "TikTokLiveReaderThai")
     if not os.path.exists(dist_dir):
-        # หากสร้างแบบ OneFolder (หรือหากต้องการย้ายไปเคียงข้าง dist คลาสตรง)
         dist_dir = "dist"
     
     resources = [
@@ -96,6 +114,21 @@ def build_executable():
                 print(f"  [สำเร็จ] คัดลอกโฟลเดอร์ {src_path} -> {dest_path}")
         except Exception as e:
             print(f"  [ล้มเหลว] ไม่สามารถคัดลอก {src_path}: {e}")
+
+    # คัดลอก updater.exe ที่คอมไพล์แล้วเข้าไปในโฟลเดอร์ _internal
+    src_updater = os.path.join("dist", "updater.exe")
+    dest_updater = os.path.join(internal_dir, "updater.exe")
+    if os.path.exists(src_updater) and os.path.exists(internal_dir):
+        try:
+            shutil.copy2(src_updater, dest_updater)
+            print(f"  [สำเร็จ] คัดลอกตัวอัปเดต {src_updater} -> {dest_updater}")
+            
+            # ลบไฟล์ตัวเลือกจำลอง/และ build directory ที่ไม่ใช้ออกเพื่อความสะอาดของโปรเจกต์
+            os.remove(src_updater)
+            shutil.rmtree(os.path.join("build", "updater"), ignore_errors=True)
+            shutil.rmtree(os.path.join("dist", "updater"), ignore_errors=True)
+        except Exception as e:
+            print(f"  [ล้มเหลว] ไม่สามารถย้ายหรือทำความสะอาดตัวอัปเดต: {e}")
 
     print("\n=== การแพ็คเกจเสร็จสิ้นสมบูรณ์! ===")
     print("ตัวโปรแกรมพร้อมรันและทรัพยากรทั้งหมดถูกจัดไว้ในโฟลเดอร์ dist/")

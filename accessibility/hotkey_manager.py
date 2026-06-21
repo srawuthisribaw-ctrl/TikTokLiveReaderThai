@@ -13,7 +13,7 @@ class HotkeyManager:
         103: (wx.MOD_NONE, wx.WXK_F3, "F3: หยุดเชื่อมต่อ"),
         104: (wx.MOD_NONE, wx.WXK_F4, "F4: สลับอ่านแชท"),
         105: (wx.MOD_NONE, wx.WXK_F5, "F5: สลับอ่านคนเข้า"),
-        106: (wx.MOD_NONE, wx.WXK_F6, "F6: สลับอ่านกิฟต์"),
+        106: (wx.MOD_NONE, wx.WXK_F6, "F6: เงียบเสียงพูดด่วน"),
         107: (wx.MOD_NONE, wx.WXK_F7, "F7: อ่านอันดับผู้ชม"),
         108: (wx.MOD_NONE, wx.WXK_F8, "F8: อ่านตัวเลขสถิติ"),
         109: (wx.MOD_NONE, wx.WXK_F9, "F9: ตั้งค่าเสียง"),
@@ -39,7 +39,8 @@ class HotkeyManager:
         127: (wx.MOD_ALT, wx.WXK_F8, "Alt+F8: แพ้"),
         128: (wx.MOD_ALT, wx.WXK_F9, "Alt+F9: สุ่มเสียง"),
         129: (wx.MOD_ALT, wx.WXK_F10, "Alt+F10: เปิดหน้าต่างซาวด์บอร์ด"),
-        130: (wx.MOD_CONTROL | wx.MOD_SHIFT, ord('R'), "Ctrl+Shift+R: เปิดเครื่องเล่นวิทยุ")
+        130: (wx.MOD_CONTROL | wx.MOD_SHIFT, ord('R'), "Ctrl+Shift+R: เปิดเครื่องเล่นวิทยุ"),
+        131: (wx.MOD_CONTROL | wx.MOD_SHIFT, ord('G'), "Ctrl+Shift+G: สลับอ่านของขวัญ")
     }
 
     def __init__(self, frame: wx.Frame):

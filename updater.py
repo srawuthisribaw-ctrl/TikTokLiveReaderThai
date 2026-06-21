@@ -30,6 +30,8 @@ def run_update():
 
     if getattr(sys, 'frozen', False):
         base_dir = os.path.dirname(sys.executable)
+        if os.path.basename(base_dir).lower() == "_internal":
+            base_dir = os.path.dirname(base_dir)
     else:
         base_dir = os.path.dirname(os.path.abspath(__file__))
 

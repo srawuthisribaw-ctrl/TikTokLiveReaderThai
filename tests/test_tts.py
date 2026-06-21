@@ -31,5 +31,24 @@ class TestTTSPriorityQueue(unittest.TestCase):
         self.assertEqual(second[2], "กล้วย พิมพ์สวัสดี")
         self.assertEqual(third[2], "สมหญิง เข้าห้อง")
 
+    def test_mute_behavior(self):
+        """ทดสอบการส่งผ่านสถานะเงียบเสียง (Mute) ไปยัง TTS Engine และการรีเซ็ตเมื่อเริ่มพูดใหม่"""
+        aq = AudioQueue("config.dat")
+        try:
+            self.assertFalse(aq.muted)
+            self.assertFalse(aq.tts.muted)
+            
+            # เรียกใช้ mute()
+            aq.mute()
+            
+            # ตรวจสอบว่าสถานะ tts.muted ถูกบันทึกเป็น True
+            self.assertTrue(aq.tts.muted)
+            
+            # เมื่อมีการอ่านข้อความครั้งถัดไป สถานะปิดเสียงของ tts จะต้องถูกรีเซ็ตเป็น False
+            aq.tts.speak("", "google", "", 0, 0.0)
+            self.assertFalse(aq.tts.muted)
+        finally:
+            pass
+
 if __name__ == "__main__":
     unittest.main()
