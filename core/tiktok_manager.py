@@ -119,7 +119,12 @@ class TikTokManager:
         self.thread: Optional[threading.Thread] = None
         self.is_connected = False
         self.room_id = ""
-        self.total_likes = 0
+        # โหลดยอดไลก์สะสมจากฐานข้อมูลเพื่อป้องกันค่าเป็น 0 ทุกครั้งที่เปิดโปรแกรมใหม่
+        try:
+            total_likes_rows = self.db.execute_query("SELECT SUM(CAST(value AS INTEGER)) as total_l FROM statistics WHERE metric_name = 'likes'")
+            self.total_likes = int(total_likes_rows[0]["total_l"]) if total_likes_rows and total_likes_rows[0]["total_l"] else 0
+        except Exception:
+            self.total_likes = 0
         
         # เก็บประวัติเพื่อเช็คสแปม
         self.last_comment_text = ""
