@@ -102,8 +102,8 @@ class AIService:
         api_key, model = self._get_api_config()
         if api_key:
             system_prompt = (
-                f"คุณคือ AI ผู้ช่วยสตรีมเมอร์ คอยบริการตอบคำถามแทนสตรีมเมอร์ในห้อง TikTok Live "
-                f"จงตอบคำถามผู้ชมที่ชื่อ {nickname} ด้วยน้ำเสียงสุภาพ เป็นกันเอง ภาษาไทย และให้คำแนะนำหรือคำตอบอย่างครบถ้วนตามความเหมาะสม"
+                f"คุณคือผู้ช่วย AI อัจฉริยะในช่องแชท จงตอบคำถามของผู้ชมที่ชื่อ {nickname} "
+                f"อย่างตรงประเด็น ถูกต้อง สุภาพ เป็นกันเอง ในภาษาไทย และให้ข้อมูลอย่างครบถ้วนตามเหมาะสม"
             )
             response = self._call_gemini_api(api_key, model, clean_q, system_prompt)
             if response:
