@@ -328,9 +328,9 @@ class TikTokManager:
             # 4. ประมวลผลคำสั่งแชทด่วน (!ช่วยเหลือ, !คะแนน ฯลฯ)
             cmd_res = self.commands.handle_chat_command(user_id, nickname, comment)
             if cmd_res:
-                ans_text, sfx_k, prio = cmd_res
-                # บันทึกเป็นช่อง AI หรือคอมเมนต์ตามเนื้อความ
-                self.audio.add_to_queue(ans_text, prio, sfx_k, channel="ai" if ("AI ตอบ" in ans_text or "AI answered" in ans_text) else "comment")
+                ans_text, sfx_k, prio, channel = cmd_res
+                # บันทึกเป็นช่องมิกเซอร์ที่เหมาะสมตามประเภทของคำสั่ง
+                self.audio.add_to_queue(ans_text, prio, sfx_k, channel=channel)
                 bot_prefix = "[Bot]" if get_language() == "en" else "[บอท]"
                 self.ui_callback("history", f"{bot_prefix}: {ans_text}")
                 return

@@ -563,7 +563,23 @@ class MainWindow(wx.Frame):
         ใช้การพิมพ์/พูดจำลอง (ในกรณีผู้ใช้ตาบอด จะมี Popup เด้งขึ้นมาเพื่อถามเสียงหรือพิมพ์ถามด่วน)
         """
         from core.i18n import get_language
+        import json
         lang = get_language()
+        
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            enabled = cfg.get("AI", {}).get("streamer_assistant_enabled", True)
+        except Exception:
+            enabled = True
+
+        if not enabled:
+            if lang == "en":
+                self.audio.add_to_queue("AI Streamer Assistant is disabled in settings.", 8)
+            else:
+                self.audio.add_to_queue("ระบบผู้ช่วยสตรีมเมอร์ AI ถูกปิดใช้งานในการตั้งค่าค่ะ", 8)
+            return
+
         feature_name = "AI Assistant" if lang == "en" else "ผู้ช่วย AI"
         if not self._check_license_and_prompt(feature_name):
             return
