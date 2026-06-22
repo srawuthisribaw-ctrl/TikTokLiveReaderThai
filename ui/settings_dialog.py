@@ -334,11 +334,10 @@ class SettingsDialog(wx.Dialog):
         self.reader.bind_textctrl_announcement(self.txt_apikey, "ช่องใส่รหัสเจมินี่ เอพีไอ คีย์")
         vbox.Add(self.txt_apikey, 0, wx.EXPAND | wx.ALL, 5)
 
-        vbox.Add(wx.StaticText(self.tab_ai, label="เวอร์ชัน Model AI:"), 0, wx.ALL, 5)
-        self.choice_model = wx.Choice(self.tab_ai, choices=["gemini-1.5-flash", "gemini-1.5-pro"])
-        self.reader.bind_choice_announcement(self.choice_model, "เลือกขนาดโมเดลปัญญาประดิษฐ์")
-        self.choice_model.SetStringSelection(cfg.get("model_name", "gemini-1.5-flash"))
-        vbox.Add(self.choice_model, 0, wx.EXPAND | wx.ALL, 5)
+        vbox.Add(wx.StaticText(self.tab_ai, label="ชื่อ Model AI (เช่น gemini-2.5-flash, gemini-3.5-flash):"), 0, wx.ALL, 5)
+        self.txt_model = wx.TextCtrl(self.tab_ai, value=cfg.get("model_name", "gemini-2.5-flash"))
+        self.reader.bind_textctrl_announcement(self.txt_model, "ช่องใส่ชื่อโมเดลปัญญาประดิษฐ์")
+        vbox.Add(self.txt_model, 0, wx.EXPAND | wx.ALL, 5)
 
         self.chk_streamer_ai = wx.CheckBox(self.tab_ai, label="เปิดระบบวิเคราะห์เสียงตอบคำถามของสตรีมเมอร์ (Ctrl+Shift+A)")
         self.chk_viewer_ai = wx.CheckBox(self.tab_ai, label="เปิดระบบผู้ช่วย AI โต้ตอบตอบข้อสงสัยของผู้ชมสด (พิมพ์ !ถาม)")
@@ -466,7 +465,7 @@ class SettingsDialog(wx.Dialog):
 
         # 5. แท็บ AI
         self.config_data["AI"]["api_key"] = self.txt_apikey.GetValue().strip()
-        self.config_data["AI"]["model_name"] = self.choice_model.GetStringSelection()
+        self.config_data["AI"]["model_name"] = self.txt_model.GetValue().strip()
         self.config_data["AI"]["streamer_assistant_enabled"] = self.chk_streamer_ai.GetValue()
         self.config_data["AI"]["viewer_assistant_enabled"] = self.chk_viewer_ai.GetValue()
         self.config_data["AI"]["announce_stats_enabled"] = self.chk_announce_stats.GetValue()

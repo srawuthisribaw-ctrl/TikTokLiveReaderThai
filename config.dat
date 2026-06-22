@@ -73,7 +73,7 @@
   },
   "AI": {
     "api_key": "",
-    "model_name": "gemini-1.5-flash",
+    "model_name": "gemini-2.5-flash",
     "streamer_assistant_enabled": true,
     "viewer_assistant_enabled": true,
     "announce_stats_enabled": true
