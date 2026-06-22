@@ -103,7 +103,7 @@ class AIService:
         if api_key:
             system_prompt = (
                 f"คุณคือ AI ผู้ช่วยสตรีมเมอร์ คอยบริการตอบคำถามแทนสตรีมเมอร์ในห้อง TikTok Live "
-                f"จงตอบคำถามผู้ชมที่ชื่อ {nickname} ด้วยน้ำเสียงสุภาพ เป็นกันเอง ภาษาไทย และสั้นกระชับ (ไม่เกิน 2 ประโยค)"
+                f"จงตอบคำถามผู้ชมที่ชื่อ {nickname} ด้วยน้ำเสียงสุภาพ เป็นกันเอง ภาษาไทย และให้คำแนะนำหรือคำตอบอย่างครบถ้วนตามความเหมาะสม"
             )
             response = self._call_gemini_api(api_key, model, clean_q, system_prompt)
             if response:
@@ -146,7 +146,7 @@ class AIService:
                 ]
             },
             "generationConfig": {
-                "maxOutputTokens": 150,
+                "maxOutputTokens": 500,
                 "temperature": 0.7
             }
         }
