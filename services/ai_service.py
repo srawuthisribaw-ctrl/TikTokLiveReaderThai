@@ -12,6 +12,7 @@ class AIService:
     def __init__(self, config_path: str):
         self.config_path = config_path
         self.db = DatabaseHelper()
+        self.last_api_error = None
 
     def _get_api_config(self) -> tuple[str, str]:
         """ดึง API Key และ Model Name จากไฟล์คอนฟิก"""
@@ -108,6 +109,9 @@ class AIService:
             response = self._call_gemini_api(api_key, model, clean_q, system_prompt)
             if response:
                 return f"AI ตอบคุณ {nickname} ว่า: {response}"
+            else:
+                err_msg = f" (ข้อผิดพลาด AI: {self.last_api_error})" if self.last_api_error else ""
+                return f"คุณ {nickname} ถามว่า: {clean_q} (บอทผู้ช่วยตอบ: ระบบเชื่อมต่อ AI ขัดข้องชั่วคราวครับ{err_msg})"
 
         # หากออฟไลน์ (ไม่มี API Key)
         local_rules = [
@@ -156,13 +160,22 @@ class AIService:
             response = requests.post(url, headers=headers, json=payload, timeout=5.0)
             if response.status_code == 200:
                 data = response.json()
-                # แกะค่า text จากโครงสร้าง response ของ Gemini
                 candidates = data.get("candidates", [])
                 if candidates:
                     parts = candidates[0].get("content", {}).get("parts", [])
                     if parts:
+                        self.last_api_error = None
                         return parts[0].get("text", "").strip()
-            print(f"Gemini API Error Status: {response.status_code}, Body: {response.text}")
+                self.last_api_error = "Response missing candidates/parts content"
+            else:
+                # สรุปข้อความผิดพลาดให้สั้นกระชับสำหรับเสียงอ่าน
+                try:
+                    err_json = response.json()
+                    self.last_api_error = f"HTTP {response.status_code}: {err_json.get('error', {}).get('message', 'Unknown Error')}"
+                except:
+                    self.last_api_error = f"HTTP {response.status_code}: {response.text[:100]}"
+                print(f"Gemini API Error Status: {response.status_code}, Body: {response.text}")
         except Exception as e:
+            self.last_api_error = f"Connection error: {str(e)[:100]}"
             print(f"Failed to call Gemini API: {e}")
         return None
