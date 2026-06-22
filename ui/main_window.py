@@ -18,7 +18,7 @@ from ui.soundboard_window import SoundboardWindow
 from ui.radio_window import RadioWindow
 from core.i18n import tr
 
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.0.1"
 
 class MainWindow(wx.Frame):
     """

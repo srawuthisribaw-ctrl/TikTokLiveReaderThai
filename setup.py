@@ -83,6 +83,7 @@ def build_executable():
         ("nvdaControllerClient_x64.dll", True),
         ("คู่มือภาษาไทย.txt", True),
         ("คู่มือคนตาบอด.txt", True),
+        ("ประวัติการปรับปรุง.txt", True),
         ("sounds", False)  # โฟลเดอร์เสียง
     ]
 

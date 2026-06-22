@@ -128,43 +128,42 @@ class SettingsDialog(wx.Dialog):
         vbox = wx.BoxSizer(wx.VERTICAL)
         cfg = self.config_data.get("TTS", {})
         
-        # 1. การเลือกเอนจินหลัก
+        # 1. การเลือกเอนจินหลัก (จัดกลุ่มใหม่ไม่ซ้ำซ้อน)
         vbox.Add(wx.StaticText(self.tab_tts, label=tr("LBL_TTS_MODE")), 0, wx.ALL, 5)
         self.choice_engine = wx.Choice(self.tab_tts, choices=[
             "NVDA Screen Reader", 
             "JAWS Screen Reader",
-            "SAPI5 (Windows standard)", 
-            "Windows OneCore (SpeechSynthesizer)", 
-            "Google Translate TTS",
-            "Microsoft Edge Online TTS"
+            "Windows System Voice (เสียงระบบ Windows - SAPI5/OneCore)", 
+            "Online Voice (เสียงออนไลน์ - Edge/Google)"
         ])
         
         engine_mode = cfg.get("mode", "nvda")
-        engine_map = {"nvda": 0, "jaws": 1, "sapi5": 2, "onecore": 3, "google": 4, "edge": 5}
-        self.choice_engine.SetSelection(engine_map.get(engine_mode, 0))
+        if engine_mode == "nvda":
+            engine_idx = 0
+        elif engine_mode == "jaws":
+            engine_idx = 1
+        elif engine_mode in ("sapi5", "onecore"):
+            engine_idx = 2
+        elif engine_mode in ("google", "edge"):
+            engine_idx = 3
+        else:
+            engine_idx = 0
+            
+        self.choice_engine.SetSelection(engine_idx)
         self.choice_engine.Bind(wx.EVT_CHOICE, self._on_engine_change)
         self.reader.bind_choice_announcement(self.choice_engine, tr("LBL_TTS_MODE"))
         vbox.Add(self.choice_engine, 0, wx.EXPAND | wx.ALL, 5)
 
-        # 2. รายชื่อเสียงพูดที่มีในระบบ
+        # 2. รายชื่อเสียงพูดที่มีในระบบ (กรองตามกลุ่มที่เลือก)
         vbox.Add(wx.StaticText(self.tab_tts, label=tr("LBL_VOICE_SELECT")), 0, wx.ALL, 5)
         
         from tts.tts_engine import TTSEngine
         temp_engine = TTSEngine()
         self.available_voices = temp_engine.get_available_voices()
+        self.filtered_voices = []
         
-        voice_choices = [v["name"] for v in self.available_voices]
-        self.choice_voice = wx.Choice(self.tab_tts, choices=voice_choices)
+        self.choice_voice = wx.Choice(self.tab_tts, choices=[])
         self.reader.bind_choice_announcement(self.choice_voice, tr("LBL_VOICE_SELECT"))
-        
-        saved_voice_id = cfg.get("voice_id", "")
-        # ค้นหา index จาก ID
-        saved_idx = 0
-        for i, voice_info in enumerate(self.available_voices):
-            if voice_info["id"] == saved_voice_id:
-                saved_idx = i
-                break
-        self.choice_voice.SetSelection(saved_idx)
         vbox.Add(self.choice_voice, 0, wx.EXPAND | wx.ALL, 5)
 
         # 3. แถบความเร็ว
@@ -205,10 +204,31 @@ class SettingsDialog(wx.Dialog):
 
     def _update_tts_controls_state(self):
         idx = self.choice_engine.GetSelection()
-        is_manual_sapi = idx in (2, 3, 5)  # SAPI5, OneCore, Edge
-        self.choice_voice.Enable(is_manual_sapi)
-        self.sld_speed.Enable(is_manual_sapi)
-        self.choice_funny_style.Enable(is_manual_sapi)
+        has_voice_select = idx in (2, 3)  # 2: เสียงระบบ Windows, 3: เสียงออนไลน์
+        
+        # กรองเสียงพูดตามเอนจินหลัก
+        self.choice_voice.Clear()
+        if idx == 2: # เสียงระบบ Windows (SAPI5/OneCore)
+            self.filtered_voices = [v for v in self.available_voices if v["type"] in ("sapi5", "onecore")]
+        elif idx == 3: # เสียงออนไลน์ (Edge/Google)
+            self.filtered_voices = [v for v in self.available_voices if v["type"] in ("edge", "google")]
+        else:
+            self.filtered_voices = []
+
+        if self.filtered_voices:
+            self.choice_voice.AppendItems([v["name"] for v in self.filtered_voices])
+            # พยายามดึงไอดีที่บันทึกไว้ใน config
+            saved_voice_id = self.config_data.get("TTS", {}).get("voice_id", "")
+            sel_idx = 0
+            for i, voice_info in enumerate(self.filtered_voices):
+                if voice_info["id"] == saved_voice_id:
+                    sel_idx = i
+                    break
+            self.choice_voice.SetSelection(sel_idx)
+
+        self.choice_voice.Enable(has_voice_select)
+        self.sld_speed.Enable(has_voice_select)
+        self.choice_funny_style.Enable(has_voice_select)
 
     def _init_sfx_tab(self):
         vbox = wx.BoxSizer(wx.VERTICAL)
@@ -408,13 +428,23 @@ class SettingsDialog(wx.Dialog):
         self.config_data["Settings"]["blacklist"] = [w.strip() for w in bl_text.split(",") if w.strip()]
 
         # 2. แท็บเสียง TTS
-        engine_map = {0: "nvda", 1: "jaws", 2: "sapi5", 3: "onecore", 4: "google", 5: "edge"}
-        self.config_data["TTS"]["mode"] = engine_map.get(self.choice_engine.GetSelection(), "nvda")
-        
-        sel_idx = self.choice_voice.GetSelection()
-        if 0 <= sel_idx < len(self.available_voices):
-            self.config_data["TTS"]["voice_id"] = self.available_voices[sel_idx]["id"]
-            self.config_data["TTS"]["voice_index"] = sel_idx
+        engine_idx = self.choice_engine.GetSelection()
+        if engine_idx == 0:
+            self.config_data["TTS"]["mode"] = "nvda"
+        elif engine_idx == 1:
+            self.config_data["TTS"]["mode"] = "jaws"
+        else:
+            # ดึงประเภทและไอดีจริงตามเสียงที่เลือกจากรายการที่กรองไว้ (sapi5, onecore, edge, google)
+            sel_idx = self.choice_voice.GetSelection()
+            if 0 <= sel_idx < len(self.filtered_voices):
+                voice_info = self.filtered_voices[sel_idx]
+                self.config_data["TTS"]["mode"] = voice_info["type"]
+                self.config_data["TTS"]["voice_id"] = voice_info["id"]
+                # บันทึกดัชนีจำลองที่แมปกับรายการ available_voices ทั้งหมดเพื่อความเข้ากันได้ย้อนหลัง
+                for idx_orig, orig_v in enumerate(self.available_voices):
+                    if orig_v["id"] == voice_info["id"]:
+                        self.config_data["TTS"]["voice_index"] = idx_orig
+                        break
             
         self.config_data["TTS"]["speed"] = self.sld_speed.GetValue()
         self.config_data["TTS"]["volume"] = self.sld_vol.GetValue() / 100.0
