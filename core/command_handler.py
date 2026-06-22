@@ -33,8 +33,8 @@ class CommandHandler:
             # เราให้ระดับความสำคัญของเกมคีย์เสียง = 5 (คอมเมนต์/คำสั่ง)
             return game_res[0], game_res[1], 5
 
-        # ตรวจสอบว่าแชทขึ้นต้นด้วย ! หรือไม่
-        if not msg.startswith("!"):
+        # ตรวจสอบว่าแชทขึ้นต้นด้วย ! หรือ @ หรือไม่
+        if not (msg.startswith("!") or msg.startswith("@")):
             # เช็คคำสุ่มตอบสั้นๆ ในกรณีเล่นเกมพิมพ์เร็วแบบตรงคีย์ (ไม่มี !)
             if self.games.active_game == "fast_response":
                 fast_res = self.games.handle_viewer_attempt(user_id, nickname, msg)
@@ -61,7 +61,7 @@ class CommandHandler:
                 help_text = (
                     "คำสั่งช่องแชทที่มีในระบบคือ: !คะแนน (ดูคะแนน), !อันดับ (ดูอันดับคนดู), "
                     "!ภารกิจ (ดูเควสประจำวัน), !ร้านค้า (ดูราคาไอเทม), !ซื้อ (แลกซื้อสิทธิพิเศษ), "
-                    "!หมุน (วงล้อนำโชค), !เพลง (ขอเพลง), !ถาม (ถามคำถาม AI), !ร่วมกิจกรรม (ลุ้นรางวัลจับสลาก)"
+                    "!หมุน (วงล้อนำโชค), !เพลง (ขอเพลง), !ถาม หรือ @ตามด้วยคำถาม (ถามคำถาม AI), !ร่วมกิจกรรม (ลุ้นรางวัลจับสลาก)"
                 )
             return help_text, "sfx_comment", 5
 
@@ -155,14 +155,23 @@ class CommandHandler:
             req_msg = self.radio.request_song(nickname, args)
             return req_msg, "sfx_comment", 5
 
-        # --- คำสั่งที่ 14: !ถาม / !ask ---
-        elif command in ("!ถาม", "!ask"):
-            if not args:
+        # --- คำสั่งที่ 14: !ถาม / !ask / @ถาม / @ask / @บอท / @bot / @ai / @AI / หรือการใช้ @ นำหน้าคำถาม ---
+        elif command in ("!ถาม", "!ask", "@ถาม", "@ask", "@บอท", "@bot", "@ai", "@AI") or command == "@" or command.startswith("@"):
+            if command in ("!ถาม", "!ask", "@ถาม", "@ask", "@บอท", "@bot", "@ai", "@AI"):
+                question_text = args
+            elif command == "@":
+                question_text = args
+            else:
+                question_text = command[1:]
+                if args:
+                    question_text += " " + args
+
+            if not question_text.strip():
                 if lang == "en":
-                    return f"Hello {nickname}, please type a question after the !ask command.", "sfx_comment", 5
+                    return f"Hello {nickname}, please type a question after the @ or !ask command.", "sfx_comment", 5
                 else:
-                    return f"คุณ {nickname} กรุณาพิมพ์คำถามต่อท้ายคำสั่ง !ถาม ด้วยครับ", "sfx_comment", 5
-            ai_answer = self.ai.answer_viewer_query(nickname, args)
+                    return f"คุณ {nickname} กรุณาพิมพ์คำถามต่อท้ายเครื่องหมาย @ หรือ !ถาม ด้วยครับ", "sfx_comment", 5
+            ai_answer = self.ai.answer_viewer_query(nickname, question_text)
             return ai_answer, "sfx_comment", 5
 
         return None

@@ -18,7 +18,7 @@ from ui.soundboard_window import SoundboardWindow
 from ui.radio_window import RadioWindow
 from core.i18n import tr
 
-APP_VERSION = "3.0.1"
+APP_VERSION = "3.0.3"
 
 class MainWindow(wx.Frame):
     """
@@ -264,6 +264,34 @@ class MainWindow(wx.Frame):
             wx.CallAfter(self.st_status.SetLabel, tr("STATUS_ERROR_DETAIL").format(error=detail))
             wx.CallAfter(self.btn_toggle_conn.SetLabel, tr("BTN_LABEL_CONNECT"))
             wx.CallAfter(self.txt_tiktok_id.Enable)
+            
+            # Log to history listbox
+            error_msg = f"--- {tr('STATUS_ERROR_DETAIL').format(error=detail)} ---"
+            wx.CallAfter(self._append_to_history, error_msg)
+            
+            # Determine localized speech message
+            from core.i18n import get_language
+            lang = get_language()
+            if lang == "en":
+                if "UserOfflineError" in detail or "offline" in detail.lower():
+                    speak_err = "Connection failed because the user is currently offline."
+                elif "UserNotFoundError" in detail or "not exist" in detail.lower():
+                    speak_err = "Connection failed because the user was not found."
+                elif "SIGI_STATE" in detail or "blocked" in detail.lower():
+                    speak_err = "Connection blocked by TikTok. Please try again later."
+                else:
+                    speak_err = f"Connection failed due to {detail}"
+            else:
+                if "UserOfflineError" in detail or "offline" in detail.lower():
+                    speak_err = "การเชื่อมต่อล้มเหลว เนื่องจากผู้ใช้ไม่ได้กำลังไลฟ์สดอยู่ในขณะนี้ค่ะ"
+                elif "UserNotFoundError" in detail or "not exist" in detail.lower() or "never gone live" in detail.lower():
+                    speak_err = "การเชื่อมต่อล้มเหลว เนื่องจากไม่พบชื่อผู้ใช้งานนี้ในระบบค่ะ"
+                elif "SIGI_STATE" in detail or "blocked" in detail.lower():
+                    speak_err = "การเชื่อมต่อถูกบล็อกชั่วคราวโดยติ๊กต็อก กรุณาลองใหม่อีกครั้งภายหลังค่ะ"
+                else:
+                    speak_err = f"การเชื่อมต่อล้มเหลวเนื่องจาก {detail}"
+            
+            self.audio.add_to_queue(speak_err, 9, channel="tts")
         elif status == "history":
             # ป้อนลงประวัติหน้าจอหลัก
             wx.CallAfter(self._append_to_history, detail)

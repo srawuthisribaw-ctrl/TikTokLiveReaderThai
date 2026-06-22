@@ -86,10 +86,18 @@ class AIService:
         ระบบผู้ช่วยตอบคำถามผู้ชมในแชท (Viewer Assistant)
         รองรับการเชื่อมโยงกับ API ภายนอกหรือมีคำตอบมาตรฐาน
         """
-        # ลบคีย์เวิร์ด !ถาม ออกจากเนื้อหาคำถาม
-        clean_q = question.replace("!ถาม", "").strip()
+        # ลบคีย์เวิร์ดคำสั่งต่างๆ ออกจากเนื้อหาคำถาม
+        clean_q = question
+        for kw in ("!ถาม", "!ask", "@ถาม", "@ask", "@บอท", "@bot", "@ai", "@AI"):
+            clean_q = clean_q.replace(kw, "")
+        
+        # ลบเครื่องหมาย @ หรือ ! ที่อาจเหลืออยู่ด้านหน้าสุด
+        clean_q = clean_q.strip()
+        if clean_q.startswith("@") or clean_q.startswith("!"):
+            clean_q = clean_q[1:].strip()
+
         if not clean_q:
-            return f"คุณ {nickname} ต้องการถามอะไรบอท AI หรือเปล่าครับ? ตัวอย่าง พิมพ์ !ถาม วันนี้อากาศดีไหม"
+            return f"คุณ {nickname} ต้องการถามอะไรบอท AI หรือเปล่าครับ? ตัวอย่าง พิมพ์ @ตามด้วยคำถาม หรือ !ถาม วันนี้อากาศดีไหม"
 
         api_key, model = self._get_api_config()
         if api_key:

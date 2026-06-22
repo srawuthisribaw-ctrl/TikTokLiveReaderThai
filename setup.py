@@ -18,6 +18,7 @@ def build_executable():
         "pyinstaller",
         "--noconsole",
         "--name=TikTokLiveReaderThai",
+        "--version-file=file_version_info.txt",
         "--clean",
         "-y",
         "--paths=.",

@@ -217,7 +217,8 @@ class TTSEngine:
             if voice_id and voice_id.startswith("HKEY_"):
                 try:
                     token = win32com.Dispatch("SAPI.SpObjectToken")
-                    token.SetId(voice_id)
+                    sapi_voice_id = voice_id.replace("Speech_OneCore", "Speech")
+                    token.SetId(sapi_voice_id)
                     self.speaker.Voice = token
                 except Exception as e:
                     print(f"Error setting voice token: {e}")
@@ -352,9 +353,15 @@ class TTSEngine:
     def install_thai_offline(self) -> bool:
         """คัดลอกเสียงภาษาไทยจาก Speech_OneCore ไปยัง SAPI5 (ต้องใช้สิทธิ์แอดมิน)"""
         import subprocess
-        cmd = "Start-Process cmd -ArgumentList '/c reg copy HKLM\\SOFTWARE\\Microsoft\\Speech_OneCore\\Voices\\Tokens HKLM\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens /s /f' -Verb RunAs -Wait"
+        cmd = "reg copy HKLM\\SOFTWARE\\Microsoft\\Speech_OneCore\\Voices\\Tokens HKLM\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens /s /f"
+        # Check if the system is 64-bit (has SysWOW64 directory)
+        sys_root = os.environ.get("SystemRoot", "C:\\Windows")
+        if os.path.exists(os.path.join(sys_root, "SysWOW64")):
+            cmd += " & reg copy HKLM\\SOFTWARE\\Microsoft\\Speech_OneCore\\Voices\\Tokens HKLM\\SOFTWARE\\Wow6432Node\\Microsoft\\Speech\\Voices\\Tokens /s /f"
+        
+        full_cmd = f"Start-Process cmd -ArgumentList '/c {cmd}' -Verb RunAs -Wait"
         try:
-            subprocess.run(["powershell", "-Command", cmd], check=True)
+            subprocess.run(["powershell", "-Command", full_cmd], check=True)
             return True
         except Exception as e:
             print(f"Error copying registry: {e}")

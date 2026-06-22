@@ -237,7 +237,6 @@ class TikTokManager:
                     if attempt == max_retries or self.stop_bg_tasks:
                         self.is_connected = False
                         self.ui_callback("connection_failed", str(e))
-                        self.audio.add_to_queue(tr("MSG_CONN_FAILED"), 8, channel="tts")
                     else:
                         time.sleep(retry_delay)
         finally:
