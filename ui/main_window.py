@@ -687,7 +687,7 @@ class MainWindow(wx.Frame):
             except Exception:
                 return (0, 0, 0)
                 
-        if parse_ver(latest_ver) > parse_ver(local_ver):
+        if parse_ver(latest_ver) >= parse_ver(local_ver):
             if lang == "en":
                 self.audio.add_to_queue(f"New version {latest_ver} is available. Do you want to update now?", 8)
                 msg = f"New version {latest_ver} is available (Current: {local_ver}).\nDo you want to update now?\nThe program will close to install the update."
