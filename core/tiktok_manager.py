@@ -467,13 +467,14 @@ class TikTokManager:
             user_id = event.user.unique_id
             nickname = event.user.nickname or "Guest"
             
-            self.total_likes += event.like_count
-            self.db.save_live_metric("likes", str(event.like_count))
+            like_count = getattr(event, 'likeCount', getattr(event, 'like_count', 1))
+            self.total_likes += like_count
+            self.db.save_live_metric("likes", str(like_count))
             
             for plugin in self.plugins:
                 if plugin.enabled:
                     try:
-                        plugin.on_like(user_id, nickname, event.like_count)
+                        plugin.on_like(user_id, nickname, like_count)
                     except:
                         pass
 
