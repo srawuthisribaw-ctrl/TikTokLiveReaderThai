@@ -341,7 +341,7 @@ class SettingsDialog(wx.Dialog):
 
         self.chk_streamer_ai = wx.CheckBox(self.tab_ai, label="เปิดระบบวิเคราะห์เสียงตอบคำถามของสตรีมเมอร์ (Ctrl+Shift+A)")
         self.chk_viewer_ai = wx.CheckBox(self.tab_ai, label="เปิดระบบผู้ช่วย AI โต้ตอบตอบข้อสงสัยของผู้ชมสด (พิมพ์ !ถาม)")
-        self.chk_announce_stats = wx.CheckBox(self.tab_ai, label="เปิดระบบการอ่านรายงานสถิติของสตรีมเมอร์ทุกๆ 5 นาที (รายงานผู้จัดไลฟ์)")
+        self.chk_announce_stats = wx.CheckBox(self.tab_ai, label="เปิดระบบการอ่านรายงานสถิติของสตรีมเมอร์ทุกๆ 10 นาที (รายงานผู้จัดไลฟ์)")
         
         self.chk_streamer_ai.SetValue(cfg.get("streamer_assistant_enabled", True))
         self.chk_viewer_ai.SetValue(cfg.get("viewer_assistant_enabled", True))
@@ -349,7 +349,7 @@ class SettingsDialog(wx.Dialog):
         
         self.reader.bind_checkbox_announcement(self.chk_streamer_ai, "ระบบสืบค้นสถิติผู้ช่วยสตรีมเมอร์")
         self.reader.bind_checkbox_announcement(self.chk_viewer_ai, "ระบบตอบคำถามแฟนคลับอัตโนมัติด้วยปัญญาประดิษฐ์")
-        self.reader.bind_checkbox_announcement(self.chk_announce_stats, "เปิดการประกาศสถิติผู้จัดไลฟ์ทุกห้านาที")
+        self.reader.bind_checkbox_announcement(self.chk_announce_stats, "เปิดการประกาศสถิติผู้จัดไลฟ์ทุกสิบนาที")
         
         vbox.Add(self.chk_streamer_ai, 0, wx.ALL, 5)
         vbox.Add(self.chk_viewer_ai, 0, wx.ALL, 5)

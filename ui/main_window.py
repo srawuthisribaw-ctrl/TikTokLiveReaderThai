@@ -18,7 +18,7 @@ from ui.soundboard_window import SoundboardWindow
 from ui.radio_window import RadioWindow
 from core.i18n import tr
 
-APP_VERSION = "3.0.7"
+APP_VERSION = "3.0.8"
 
 class MainWindow(wx.Frame):
     """
@@ -380,10 +380,22 @@ class MainWindow(wx.Frame):
             self.audio.add_to_queue(tr("MSG_ERR_NO_ID"), 8)
             return
             
-        # บันทึกไอดีลงคอนฟิกเก็บไว้
+        # ตรวจสอบการสลับบัญชีผู้ใช้เพื่อล้างข้อมูลประวัติและสถิติสะสมของเก่าออก
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
+        except Exception:
+            cfg = {}
+            
+        if "Settings" not in cfg:
+            cfg["Settings"] = {}
+            
+        old_id = cfg["Settings"].get("last_id", "")
+        if old_id and old_id != tid:
+            self.manager.clear_all_data()
+            
+        # บันทึกไอดีลงคอนฟิกเก็บไว้
+        try:
             cfg["Settings"]["last_id"] = tid
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, indent=2)

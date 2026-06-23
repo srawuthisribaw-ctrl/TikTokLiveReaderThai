@@ -380,3 +380,21 @@ class DatabaseHelper:
             "INSERT INTO statistics (metric_name, value, timestamp) VALUES (?, ?, ?)",
             (metric, value, now)
         )
+
+    def clear_all_data(self):
+        """ลบประวัติและสถิติสะสมทั้งหมดออกจากฐานข้อมูล"""
+        tables = [
+            "comments", 
+            "gifts", 
+            "followers", 
+            "viewers", 
+            "viewer_profiles", 
+            "daily_missions", 
+            "shop_purchases", 
+            "statistics"
+        ]
+        for table in tables:
+            try:
+                self.execute_non_query(f"DELETE FROM {table}")
+            except Exception as e:
+                print(f"Error clearing table {table}: {e}")

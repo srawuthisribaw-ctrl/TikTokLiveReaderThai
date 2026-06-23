@@ -169,18 +169,30 @@ class TikTokManager:
                 except Exception as e:
                     print(f"Failed to load plugin {fname}: {e}")
 
+    def clear_all_data(self):
+        """ล้างข้อมูลประวัติและสถิติสะสมทั้งหมดเมื่อสลับบัญชีผู้ใช้"""
+        self.total_likes = 0
+        self.db.clear_all_data()
+
     def connect_live(self, tiktok_id: str):
         """เริ่มเธรดเชื่อมต่อและรัน TikTokLiveClient"""
         if self.is_connected or (self.thread and self.thread.is_alive()):
             return
             
+        # หากมีการเปลี่ยนชื่อผู้ใช้ในขณะที่เปิดโปรแกรมอยู่ ให้ล้างข้อมูลของเก่าออกด้วยเพื่อไม่ให้ปะปนกัน
+        if self.room_id and self.room_id != tiktok_id:
+            self.clear_all_data()
+            
         self.room_id = tiktok_id
-        self.stop_bg_tasks = False
+        
+        # เริ่มเธรดรายงานสถิติเฉพาะกรณีที่เธรดยังไม่ทำงานอยู่ เพื่อป้องกันรายงานซ้ำซ้อน
+        if not (hasattr(self, 'bg_thread') and self.bg_thread and self.bg_thread.is_alive()):
+            self.stop_bg_tasks = False
+            self.bg_thread = threading.Thread(target=self._run_periodic_announcements, daemon=True)
+            self.bg_thread.start()
+            
         self.thread = threading.Thread(target=self._run_async_client, daemon=True)
         self.thread.start()
-        
-        self.bg_thread = threading.Thread(target=self._run_periodic_announcements, daemon=True)
-        self.bg_thread.start()
 
     def disconnect_live(self):
         """หยุดการเชื่อมต่อ TikTok Live"""
@@ -472,7 +484,7 @@ class TikTokManager:
             user_id = event.user.unique_id
             nickname = event.user.nickname or "Guest"
             
-            like_count = getattr(event, 'likeCount', getattr(event, 'like_count', 1))
+            like_count = getattr(event, 'count', 1) or 1
             self.total_likes += like_count
             self.db.save_live_metric("likes", str(like_count))
             
@@ -619,9 +631,9 @@ class TikTokManager:
             self.db.save_live_metric("live_end", time.strftime("%Y-%m-%d %H:%M:%S"))
 
     def _run_periodic_announcements(self):
-        """ลูปเบื้องหลังเพื่อแจกแจงประกาศอัตโนมัติทุกๆ 10 นาที และแจ้งสถานะทุกๆ 5 นาที"""
-        last_5min = time.time()
-        last_10min = time.time()
+        """ลูปเบื้องหลังเพื่อแจกแจงประกาศอัตโนมัติ และรายงานสถิติผู้จัดไลฟ์ทุกๆ 10 นาที"""
+        last_stats_report = time.time()
+        last_funny_announcement = time.time()
 
         while not self.stop_bg_tasks:
             time.sleep(5)
@@ -630,8 +642,8 @@ class TikTokManager:
 
             now = time.time()
 
-            # 1. รายงานสถานะผู้จัดไลฟ์ตาบอด ทุกๆ 5 นาที (Blind Streamer Helper)
-            if now - last_5min >= 300:
+            # 1. รายงานสถานะผู้จัดไลฟ์ตาบอด ทุกๆ 10 นาที (Blind Streamer Helper)
+            if now - last_stats_report >= 600:
                 try:
                     with open(self.config_path, "r", encoding="utf-8") as f:
                         config = json.load(f)
@@ -657,7 +669,7 @@ class TikTokManager:
                             f"มีข้อความคอมเมนต์ใหม่ในระบบ {stats['total_comments']} ข้อความค่ะ"
                         )
                     self.audio.add_to_queue(announcement, 8, channel="tts")
-                last_5min = now
+                last_stats_report = now
 
             # 2. กิจกรรมเอฟเฟกต์ข้อความเสียงตลกอัตโนมัติ (Custom Interval)
             try:
@@ -670,11 +682,11 @@ class TikTokManager:
                 interval = 180
                 enabled = True
 
-            if enabled and now - last_10min >= interval:
+            if enabled and now - last_funny_announcement >= interval:
                 # สุ่มข้อความตลก
                 text = self.soundboard.get_random_funny_announcement()
                 self.audio.add_to_queue(text, 5, channel="tts")
-                last_10min = now
+                last_funny_announcement = now
 
             # 3. รันติ๊กเกอร์ของปลั๊กอินย่อย
             for plugin in self.plugins:
